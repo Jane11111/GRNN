@@ -1,0 +1,12 @@
+
+# model setting
+model: GRU4Rec
+
+embedding_size: 128
+hidden_size: 128
+num_layers: 1
+dropout_prob: 0.25
+loss_type: 'CE'
+
+# for testing
+learning_rate: 0.001
