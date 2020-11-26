@@ -5,19 +5,15 @@
 
 import torch
 import numpy as np
-import torch.nn.functional as F
 import time
+from utils.data.preprocess import PrepareData
+from logging import getLogger
 
-a = torch.Tensor([[[1,2,3]],
-                  [[4, 5, 6]],])
-b = torch.Tensor([[[1],
-                   [2],
-                   [3]],
-                  [[1],
-                   [2],
-                   [3]],
-                  ])
-c = a+b
-print(a)
-print(b)
-print(c)
+
+for dataset in ['elec','music','taobaoapp','yoochoose','order','movie_tv','movielen']:
+
+    config= {'dataset':dataset}
+    print(dataset)
+    logger = getLogger('test')
+    prepare_data_model = PrepareData(config,logger )
+    prepare_data_model.get_train_test_statisitics()

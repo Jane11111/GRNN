@@ -14,9 +14,10 @@ Reference:
     https://github.com/kang205/SASRec
 
 """
-
+import math
 import torch
 from torch import nn
+from torch.nn.init import xavier_uniform_, xavier_normal_
 
 from model.abstract_recommender import SequentialRecommender
 from model.layers import TransformerEncoder
@@ -66,15 +67,26 @@ class SASRec(SequentialRecommender):
 
     def _init_weights(self, module):
         """ Initialize the weights """
-        if isinstance(module, (nn.Linear, nn.Embedding)):
-            # Slightly different from the TF version which uses truncated_normal for initialization
-            # cf https://github.com/pytorch/pytorch/pull/5617
-            module.weight.data.normal_(mean=0.0, std=self.initializer_range)
-        elif isinstance(module, nn.LayerNorm):
-            module.bias.data.zero_()
-            module.weight.data.fill_(1.0)
-        if isinstance(module, nn.Linear) and module.bias is not None:
-            module.bias.data.zero_()
+        # if isinstance(module, (nn.Linear, nn.Embedding)):
+        #     # Slightly different from the TF version which uses truncated_normal for initialization
+        #     # cf https://github.com/pytorch/pytorch/pull/5617
+        #     module.weight.data.normal_(mean=0.0, std=self.initializer_range)
+        # elif isinstance(module, nn.LayerNorm):
+        #     module.bias.data.zero_()
+        #     module.weight.data.fill_(1.0)
+        # if isinstance(module, nn.Linear) and module.bias is not None:
+        #
+        #     module.bias.data.zero_()
+        # for weight in self.parameters():
+        #     weight.data.uniform_(0, 1)
+        if isinstance(module, nn.Embedding):
+            xavier_normal_(module.weight)
+        # elif isinstance(module, nn.Linear) and module.bias is not None:
+        #
+        #     module.bias.data.zero_()
+        # stdv = 1.0 / math.sqrt(self.hidden_size)
+        # for weight in self.parameters():
+        #     weight.data.uniform_(-0.1, 0.1)
 
     def get_attention_mask(self, item_seq):
         """Generate left-to-right uni-directional attention mask for multi-head attention."""
@@ -99,7 +111,7 @@ class SASRec(SequentialRecommender):
 
         item_emb = self.item_embedding(item_seq)
         input_emb = item_emb + position_embedding
-        input_emb = self.LayerNorm(input_emb)
+        # input_emb = self.LayerNorm(input_emb)
         input_emb = self.dropout(input_emb)
 
         extended_attention_mask = self.get_attention_mask(item_seq)

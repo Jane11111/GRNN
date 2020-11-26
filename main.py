@@ -13,9 +13,9 @@ from utils.data.preprocess import PrepareData
 from utils.data.dataset import PaddedDataset,PaddedDatasetNormal
 from utils.data.collate import collate_fn,collate_fn_normal
 from utils.trainer import TrainRunner
-from model.grnn import GRNN
+from model.grnn import GRNN,GRNN_mlp,GRNN_no_order
 from model.baseline.gru4rec import GRU4Rec
-from config.configurator import Config
+# from config.configurator import Config
 import yaml
 import logging
 from logging import getLogger
@@ -77,8 +77,8 @@ def load_data(prepare_data_model):
 if __name__ == "__main__":
 
     model = 'GRNN'
-    dataset = 'music'
-    gpu_id = 3
+    dataset = 'order'
+    gpu_id = 1
     epochs = 300
     train_batch_size = 512
 
@@ -127,10 +127,10 @@ if __name__ == "__main__":
     # TODO 是不是可以从这里循环调参数
     best_config = config.copy()
 
-    for dropout_prob in [0, 0.25, 0.5]:
+    for dropout_prob in [0,0.25,0.5]:
         for embedding_size in [128 ]:
             for hidden_size in [128  ]:
-                for lr in [0.005, 0.001]:
+                for lr in [0.005, 0.001,0.0005,0.0001]:
 
                     config['learning_rate'] = lr
                     config['hidden_size'] = hidden_size
@@ -140,7 +140,14 @@ if __name__ == "__main__":
                     logger.info(' start training, running parameters:')
                     logger.info(config)
 
-                    model = GRNN(config, num_items)
+                    if model == 'GRNN':
+                        model = GRNN(config, num_items)
+                    elif model == 'GRNN_mlp':
+                        model = GRNN_mlp(config,num_items)
+                    elif model == 'GRNN_no_order':
+                        model = GRNN_no_order(config,num_items)
+
+
                     device = config['device']
                     model = model.to(device)
 
@@ -180,7 +187,7 @@ if __name__ == "__main__":
                     logger.info(best_config)
                     logger.info('[score]: founded best [hit@10: %.5f, ndcg@10: %.5f], current [hit@10: %.5f, ndcg@10: %.5f]'
                                 %(founded_best_hit_10, founded_best_ndcg_10, best_hr_10, best_ndcg_10))
-                    logger.info('.................for testing modification...................')
+                    # logger.info('.................for testing modification...................')
                     logger.info('<founded best test> hit@5: %.5f, ndcg@5: %.5f, mrr@5: %.5f,'
                                 'hit@10: %.5f, ndcg@10: %.5f, mrr@10: %.5f,'
                                 'hit@20: %.5f, ndcg@20: %.5f, mrr@20: %.5f'

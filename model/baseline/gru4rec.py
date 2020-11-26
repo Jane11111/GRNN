@@ -77,7 +77,7 @@ class GRU4Rec(SequentialRecommender):
         return seq_output
 
 
-    def calculate_logits(self, item_seq, item_seq_len, adj_in = None, adj_out = None ):
+    def calculate_logits(self, item_seq, item_seq_len ):
 
         seq_output = self.forward(item_seq,   item_seq_len)
 

@@ -1,5 +1,5 @@
 # model and data
-model: GRNN
+model: GRNN_no_order
 
 # model
 embedding_size: 128

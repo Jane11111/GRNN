@@ -213,7 +213,7 @@ class GCSAN(SequentialRecommender):
         seq_output = self.weight * at + (1 - self.weight) * ht
         return seq_output
 
-    def calculate_logits(self, item_seq, item_seq_len, adj_in=None, adj_out=None):
+    def calculate_logits(self, item_seq, item_seq_len):
 
         seq_output = self.forward(item_seq, item_seq_len)
 

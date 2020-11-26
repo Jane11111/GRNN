@@ -402,9 +402,11 @@ class MultiHeadAttention(nn.Module):
         context_layer = context_layer.permute(0, 2, 1, 3).contiguous()
         new_context_layer_shape = context_layer.size()[:-2] + (self.all_head_size,)
         context_layer = context_layer.view(*new_context_layer_shape)
+        # hidden_states = context_layer
         hidden_states = self.dense(context_layer)
         hidden_states = self.out_dropout(hidden_states)
         hidden_states = self.LayerNorm(hidden_states + input_tensor)
+        hidden_states = hidden_states + input_tensor
 
         return hidden_states
 

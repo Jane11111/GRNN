@@ -85,7 +85,7 @@ class NARM(SequentialRecommender):
         seq_output = self.b(c_t)
         return seq_output
 
-    def calculate_logits(self, item_seq, item_seq_len, adj_in = None, adj_out = None ):
+    def calculate_logits(self, item_seq, item_seq_len):
 
 
 

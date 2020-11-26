@@ -21,7 +21,7 @@ class PrepareData():
 
 
 
-    def construct_graph(self,u_input):
+    def construct_graph_old(self,u_input):
         position_count = len(u_input)
         u_input = np.array(u_input)
         u_A_out = np.zeros((position_count, position_count))
@@ -52,6 +52,37 @@ class PrepareData():
 
         return u_A_in, u_A_out
 
+    def construct_graph(self,u_input):
+        # 自环只加一次
+        position_count = len(u_input)
+        u_input = np.array(u_input)
+        u_A_out = np.zeros((position_count, position_count))
+        u_A_in = np.zeros((position_count, position_count))
+
+        for i in np.arange(len(u_input) - 2):
+            u_lst = np.where(u_input == u_input[i])[0]
+            v_lst = np.where(u_input == u_input[i + 1])[0]
+
+
+            for u in u_lst:
+                u_A_out[u][v_lst[0]] += 1  # 每个结点只计算一次
+            for v in v_lst:
+                u_A_in[v ][u_lst[0]] += 1
+            for u in u_lst:  # 自环
+                u_A_out[u][u_lst[0]] += 1
+                u_A_in[u][u_lst[0]] += 1
+
+
+        # print(u_A_out)
+        u_sum_in = np.reshape(np.sum(u_A_in, 1), (-1, 1))
+        u_sum_in[np.where(u_sum_in == 0)] = 1
+        u_A_in = np.divide(u_A_in, u_sum_in)
+
+        u_sum_out = np.reshape(np.sum(u_A_out, 1), (-1, 1))
+        u_sum_out[np.where(u_sum_out == 0)] = 1
+        u_A_out = np.divide(u_A_out, u_sum_out)
+
+        return u_A_in, u_A_out
 
     def get_statistics(self):
 
@@ -78,6 +109,10 @@ class PrepareData():
     def get_item_num(self):
         return self.item_count
 
+    def get_train_test_statisitics(self):
+        test_set = self.load_dataset(self.test_path,10000000)
+        dev_set = self.load_dataset(self.dev_path,10000000)
+        print('test :%d, dev :%d'%(len(test_set),len(dev_set)))
 
     def load_dataset(self,path, limit):
 
@@ -100,32 +135,18 @@ class PrepareData():
                 dataset.append([user_id,item_lst, target_id, length, u_A_in, u_A_out])
 
 
-                # max_len=self.config['max_len']
-                #
-                #
-                # seq_padding_size = [0, max_len - length]
-                # matrix_padding_size = [(0, max_len - length), (0, max_len - length)]
-                #
-                # padded_item_lst = np.pad(item_lst, seq_padding_size, 'constant')
-                # padded_u_A_in = np.pad(u_A_in, matrix_padding_size, 'constant', constant_values=(0, 0))
-                # padded_u_A_out = np.pad(u_A_out, matrix_padding_size, 'constant', constant_values=(0, 0))
-                #
-                # dataset.append([user_id, padded_item_lst, target_id, length,
-                #                padded_u_A_in,padded_u_A_out])
-
-
         return dataset
 
 
 
     def read_train_dev_test(self):
 
-        # train_limit = 10000000
-        # test_limit = 20000
-        # dev_limit = 20000
-        train_limit = 1000
-        test_limit = 200
-        dev_limit = 200
+        train_limit = 10000000
+        test_limit = 20000
+        dev_limit = 20000
+        # train_limit = 1000
+        # test_limit = 200
+        # dev_limit = 200
 
         self.train_set  = self.load_dataset(self.train_path,train_limit)
         self.test_set = self.load_dataset(self.test_path, test_limit)
