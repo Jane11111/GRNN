@@ -23,7 +23,7 @@ from torch import nn
 from torch.nn import Parameter
 from torch.nn import functional as F
 
-from  model.abstract_recommender import SequentialRecommender
+from model.modules.abstract_recommender import SequentialRecommender
 
 
 class GNN(nn.Module):

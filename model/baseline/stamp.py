@@ -21,7 +21,7 @@ import torch
 from torch import nn
 from torch.nn.init import normal_
 
-from  model.abstract_recommender import SequentialRecommender
+from model.modules.abstract_recommender import SequentialRecommender
 
 
 class STAMP(SequentialRecommender):

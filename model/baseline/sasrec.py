@@ -14,13 +14,12 @@ Reference:
     https://github.com/kang205/SASRec
 
 """
-import math
 import torch
 from torch import nn
-from torch.nn.init import xavier_uniform_, xavier_normal_
+from torch.nn.init import xavier_normal_
 
-from model.abstract_recommender import SequentialRecommender
-from model.layers import TransformerEncoder
+from model.modules.abstract_recommender import SequentialRecommender
+from model.modules.layers import TransformerEncoder
 
 
 class SASRec(SequentialRecommender):

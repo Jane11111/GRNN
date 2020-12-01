@@ -22,7 +22,7 @@ import torch
 from torch import nn
 from torch.nn.init import xavier_uniform_, xavier_normal_
 
-from model.abstract_recommender import SequentialRecommender
+from model.modules.abstract_recommender import SequentialRecommender
 
 
 class GRU4Rec(SequentialRecommender):

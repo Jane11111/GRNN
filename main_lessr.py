@@ -86,7 +86,7 @@ def load_hyper_param(config,model):
 if __name__ == "__main__":
 
     model = 'LESSR_fast'
-    dataset = 'order'
+    dataset = 'fs'
     gpu_id = 0
     epochs = 300
     train_batch_size = 512
@@ -152,7 +152,7 @@ if __name__ == "__main__":
 
     # TODO taobaoapp lessr模型还差一个0.0005的需要运行
 
-    for lr in [0.001, 0.005, 0.0001, 0.0005]:
+    for lr in [0.001,  0.005, 0.0001, 0.0005]:
         for step in [1,2,3,4]:
             config['learning_rate'] = lr
             config['step'] = step # SRGNN, GCSAN, LESSR

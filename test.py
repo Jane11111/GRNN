@@ -10,7 +10,7 @@ from utils.data.preprocess import PrepareData
 from logging import getLogger
 
 
-for dataset in ['elec','music','taobaoapp','yoochoose','order','movie_tv','movielen']:
+for dataset in [ 'taobaoapp' ]:
 
     config= {'dataset':dataset}
     print(dataset)

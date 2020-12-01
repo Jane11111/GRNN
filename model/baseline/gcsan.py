@@ -21,9 +21,9 @@ from torch import nn
 from torch.nn import Parameter
 from torch.nn import functional as F
 
-from model.abstract_recommender import SequentialRecommender
-from model.layers import TransformerEncoder
-from model.loss import EmbLoss
+from model.modules.abstract_recommender import SequentialRecommender
+from model.modules.layers import TransformerEncoder
+from model.modules.loss import EmbLoss
 
 class GNN(nn.Module):
     r"""Graph neural networks are well-suited for session-based recommendation,

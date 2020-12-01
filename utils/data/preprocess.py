@@ -21,36 +21,99 @@ class PrepareData():
 
 
 
-    def construct_graph_old(self,u_input):
-        position_count = len(u_input)
-        u_input = np.array(u_input)
-        u_A_out = np.zeros((position_count, position_count))
-        u_A_in = np.zeros((position_count, position_count))
+    # def construct_graph(self,u_input):
+    #     position_count = len(u_input)
+    #     u_input = np.array(u_input)
+    #     u_A_out = np.zeros((position_count, position_count))
+    #     u_A_in = np.zeros((position_count, position_count))
+    #
+    #     for i in np.arange(len(u_input) - 2):
+    #         u_lst = np.where(u_input == u_input[i])[0]
+    #         v_lst = np.where(u_input == u_input[i + 1])[0]
+    #
+    #
+    #         for u in u_lst:
+    #             u_A_out[u][v_lst[0]] += 1  # 每个结点只计算一次
+    #         for v in v_lst:
+    #             u_A_in[v ][u_lst[0]] += 1
+    #         for u in u_lst:  # 自环
+    #             u_A_out[u][u_lst[0]] += 1
+    #             u_A_in[u][u_lst[0]] += 1
+    #
+    #
+    #     # print(u_A_out)
+    #     u_sum_in = np.reshape(np.sum(u_A_in, 1), (-1, 1))
+    #     u_sum_in[np.where(u_sum_in == 0)] = 1
+    #     u_A_in = np.divide(u_A_in, u_sum_in)
+    #
+    #     u_sum_out = np.reshape(np.sum(u_A_out, 1), (-1, 1))
+    #     u_sum_out[np.where(u_sum_out == 0)] = 1
+    #     u_A_out = np.divide(u_A_out, u_sum_out)
+    #
+    #     return u_A_in, u_A_out
+    #
+    # def construct_graph (self,u_input):
+    #     position_count = len(u_input)
+    #     u_input = np.array(u_input)
+    #     u_A_out = np.zeros((position_count, position_count))
+    #     u_A_in = np.zeros((position_count, position_count))
+    #
+    #     for i in np.arange(len(u_input) - 2):
+    #         u_lst = np.where(u_input == u_input[i])[0]
+    #         v_lst = np.where(u_input == u_input[i + 1])[0]
+    #
+    #
+    #         for u in u_lst:
+    #             u_A_out[u][v_lst[-1]] += 1  # 每个结点只计算一次
+    #         for v in v_lst:
+    #             u_A_in[v ][u_lst[-1]] += 1
+    #
+    #
+    #
+    #     # print(u_A_out)
+    #     u_sum_in = np.reshape(np.sum(u_A_in, 1), (-1, 1))
+    #     u_sum_in[np.where(u_sum_in == 0)] = 1
+    #     u_A_in = np.divide(u_A_in, u_sum_in)
+    #
+    #     u_sum_out = np.reshape(np.sum(u_A_out, 1), (-1, 1))
+    #     u_sum_out[np.where(u_sum_out == 0)] = 1
+    #     u_A_out = np.divide(u_A_out, u_sum_out)
+    #
+    #     return u_A_in, u_A_out
 
-        for i in np.arange(len(u_input) - 2):
-            u_lst = np.where(u_input == u_input[i])[0]
-            v_lst = np.where(u_input == u_input[i + 1])[0]
-
-
-            for u in u_lst:
-                u_A_out[u][v_lst[0]] += 1  # 每个结点只计算一次
-            for v in v_lst:
-                u_A_in[v ][u_lst[0]] += 1
-            for u in u_lst:  # 自环
-                u_A_out[u][u_lst[0]] += 1
-                u_A_in[u][u_lst[0]] += 1
-
-
-        # print(u_A_out)
-        u_sum_in = np.reshape(np.sum(u_A_in, 1), (-1, 1))
-        u_sum_in[np.where(u_sum_in == 0)] = 1
-        u_A_in = np.divide(u_A_in, u_sum_in)
-
-        u_sum_out = np.reshape(np.sum(u_A_out, 1), (-1, 1))
-        u_sum_out[np.where(u_sum_out == 0)] = 1
-        u_A_out = np.divide(u_A_out, u_sum_out)
-
-        return u_A_in, u_A_out
+    # def construct_graph(self,u_input):
+    #     # 自环只加一次
+    #     position_count = len(u_input)
+    #     u_input = np.array(u_input)
+    #     u_A_out = np.zeros((position_count, position_count))
+    #     u_A_in = np.zeros((position_count, position_count))
+    #
+    #     processed = {}
+    #
+    #     item2idx = {}
+    #     for item in u_input:
+    #         lst = np.where(u_input == item)[0]
+    #         item2idx[item] = lst
+    #
+    #     for i in np.arange(len(u_input) - 1):
+    #         # u_lst = np.where(u_input == u_input[i])[0]
+    #         u_lst = item2idx[u_input[i]]
+    #         for j in np.arange(i,len(u_input),1):
+    #
+    #             tuple = (u_input[i],u_input[j])
+    #             if tuple in processed:
+    #                 continue
+    #             processed[tuple] = True
+    #             # v_lst = np.where(u_input == u_input[j])[0]
+    #             v_lst = item2idx[u_input[j]]
+    #             for u in u_lst:
+    #                 for v in v_lst:
+    #                     u_A_out[u][v]  = 1  # 每个结点只计算一次
+    #                     u_A_in[v ][u] = 1
+    #
+    #
+    #
+    #     return u_A_in, u_A_out
 
     def construct_graph(self,u_input):
         # 自环只加一次
@@ -59,30 +122,17 @@ class PrepareData():
         u_A_out = np.zeros((position_count, position_count))
         u_A_in = np.zeros((position_count, position_count))
 
-        for i in np.arange(len(u_input) - 2):
-            u_lst = np.where(u_input == u_input[i])[0]
-            v_lst = np.where(u_input == u_input[i + 1])[0]
 
-
-            for u in u_lst:
-                u_A_out[u][v_lst[0]] += 1  # 每个结点只计算一次
-            for v in v_lst:
-                u_A_in[v ][u_lst[0]] += 1
-            for u in u_lst:  # 自环
-                u_A_out[u][u_lst[0]] += 1
-                u_A_in[u][u_lst[0]] += 1
-
-
-        # print(u_A_out)
-        u_sum_in = np.reshape(np.sum(u_A_in, 1), (-1, 1))
-        u_sum_in[np.where(u_sum_in == 0)] = 1
-        u_A_in = np.divide(u_A_in, u_sum_in)
-
-        u_sum_out = np.reshape(np.sum(u_A_out, 1), (-1, 1))
-        u_sum_out[np.where(u_sum_out == 0)] = 1
-        u_A_out = np.divide(u_A_out, u_sum_out)
-
+        for i in np.arange(len(u_input) - 1):
+             u_A_out[i,i:]=1
         return u_A_in, u_A_out
+    # def construct_graph (self,u_input):
+    #     position_count = len(u_input)
+    #     u_input = np.array(u_input)
+    #     u_A_out = np.ones((position_count, position_count))
+    #     u_A_in = np.ones((position_count, position_count))
+    #
+    #     return u_A_in, u_A_out
 
     def get_statistics(self):
 

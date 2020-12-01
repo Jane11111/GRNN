@@ -10,7 +10,7 @@ import dgl
 from dgl import function as fn
 from dgl.nn.pytorch import edge_softmax
 from collections import Counter
-from model.abstract_recommender import SequentialRecommender
+from model.modules.abstract_recommender import SequentialRecommender
 
 print(dgl.__path__)
 

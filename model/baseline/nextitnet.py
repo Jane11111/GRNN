@@ -22,7 +22,7 @@ from torch import nn
 from torch.nn import functional as F
 from torch.nn.init import uniform_, xavier_normal_, constant_
 
-from model.abstract_recommender import SequentialRecommender
+from model.modules.abstract_recommender import SequentialRecommender
 
 
 class NextItNet(SequentialRecommender):

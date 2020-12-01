@@ -24,7 +24,7 @@ import torch
 from torch import nn
 from torch.nn.init import xavier_normal_, constant_
 
-from model.abstract_recommender import SequentialRecommender
+from model.modules.abstract_recommender import SequentialRecommender
 
 
 class NARM(SequentialRecommender):

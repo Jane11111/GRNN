@@ -85,8 +85,8 @@ def load_data(prepare_data_model):
 def load_hyper_param( config,model):
     learning_rate_lst = [0.001, 0.005, 0.0001, 0.0005]
     step_lst = [1,2,3,4]
-    n_layers_lst = [1,2]
-    n_heads_lst = [1,2]
+    n_layers_lst = [1,2,3]
+    n_heads_lst = [1,2,3]
     dropout_prob_lst = [0,0.25,0.5]
     narm_dropout_probs = [[0,0],[0,0.25],[0,0.5],[0.25,0.25],[0.25,0.5],[0.5,0.5],
                           [0.25, 0], [0.5, 0], [0.5, 0.25]]
@@ -159,19 +159,11 @@ def load_hyper_param( config,model):
     return res
 
 
-
-
-
-
-
-
-
-
 if __name__ == "__main__":
 
-    model = 'GRU4Rec'
-    dataset = 'order'
-    gpu_id = 2
+    model = 'SASRec'
+    dataset = 'music'
+    gpu_id = 3
     epochs = 300
     train_batch_size = 512
 

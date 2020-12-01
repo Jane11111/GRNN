@@ -4,14 +4,12 @@
 # @FileName: lessr_fast.py
 
 
-import numpy as np
 import torch as th
 from torch import nn
 import dgl
 from dgl import function as fn
 from dgl.nn.pytorch import edge_softmax
-from collections import Counter
-from model.abstract_recommender import SequentialRecommender
+from model.modules.abstract_recommender import SequentialRecommender
 
 print(dgl.__path__)
 
@@ -140,6 +138,7 @@ class LESSR_fast(SequentialRecommender):
             input_dim, embedding_dim, embedding_dim, batch_norm=True
         )
         input_dim += embedding_dim
+        #TODO
         self.batch_norm = nn.BatchNorm1d(input_dim)
         self.fc_sr = nn.Linear(input_dim, embedding_dim, bias=False)
 
