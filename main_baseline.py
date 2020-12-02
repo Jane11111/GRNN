@@ -161,9 +161,9 @@ def load_hyper_param( config,model):
 
 if __name__ == "__main__":
 
-    model = 'SASRec'
-    dataset = 'music'
-    gpu_id = 3
+    model = 'NARM'
+    dataset = 'order'
+    gpu_id = 0
     epochs = 300
     train_batch_size = 512
 

@@ -86,8 +86,8 @@ def load_hyper_param(config,model):
 if __name__ == "__main__":
 
     model = 'LESSR_fast'
-    dataset = 'fs'
-    gpu_id = 0
+    dataset = 'order'
+    gpu_id = 1
     epochs = 300
     train_batch_size = 512
 

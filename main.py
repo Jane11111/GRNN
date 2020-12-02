@@ -78,7 +78,7 @@ def load_data(prepare_data_model):
 if __name__ == "__main__":
 
     model = 'GRNN'
-    dataset = 'movie_tv'
+    dataset = 'music'
     gpu_id = 3
     epochs = 300
     train_batch_size = 512
@@ -128,14 +128,14 @@ if __name__ == "__main__":
     # TODO 是不是可以从这里循环调参数
     best_config = config.copy()
 
-    for dropout_prob in [0,0.25 ]:
+    for dropout_prob in [0,0.25  ]:
         for gnn_hidden_dropout_prob in [0 ]:
             for gnn_att_dropout_prob in [0 ]:
                 for n_layers in [1 ]:
                     for n_heads in [1 ]:
                         for embedding_size in [128 ]:
                             for hidden_size in [128  ]:
-                                for lr in [0.005 ,0.001]:
+                                for lr in [0.005 ,0.001 ]:
                                     config['hidden_size'] = hidden_size
                                     config['embedding_size'] = embedding_size
                                     config['gnn_hidden_dropout_prob'] = gnn_hidden_dropout_prob

@@ -229,8 +229,10 @@ class VallinaAtt(nn.Module):
         :return:
         """
         # keys = keys + position_emb
-        keys = self.dropout(keys)
+        # keys = keys+position_emb
+        # keys_graph_emb = keys_graph_emb+position_emb
 
+        keys = self.dropout(keys)
         extended_attention_mask = self.get_attention_mask(item_seq )
         trm_output = self.trm_encoder(queries = queries,
                                       keys = keys,
@@ -355,7 +357,7 @@ class GRNN(SequentialRecommender):
         self.emb_dropout = nn.Dropout(self.dropout_prob)
         # position embedding
         self.position_embedding = nn.Embedding(self.max_seq_length+1, self.hidden_size)
-
+        self.reverse_position_embedding = nn.Embedding(self.max_seq_length + 1, self.hidden_size)
 
         # GNN
         self.gnn = GNN(self.embedding_size, self.embedding_size,self.max_seq_length)
@@ -386,6 +388,8 @@ class GRNN(SequentialRecommender):
         self.weight1 = nn.Parameter(torch.Tensor((self.embedding_size)))
         self.weight2 = nn.Parameter(torch.Tensor((self.embedding_size)))
 
+        self.output_layer = nn.Linear(self.hidden_size*2, self.embedding_size)
+
         # parameters initialization
         self.apply(self._init_weights)
 
@@ -411,7 +415,7 @@ class GRNN(SequentialRecommender):
         reverse_pos_id = torch.clamp(reverse_pos_id, 0)
 
         position_embedding = self.position_embedding(position_ids)
-        reverse_position_embedding = self.position_embedding(reverse_pos_id)
+        reverse_position_embedding = self.reverse_position_embedding(reverse_pos_id)
         return position_embedding, reverse_position_embedding
 
     def forward(self, item_seq, adj_in,adj_out,item_seq_len):
@@ -450,15 +454,18 @@ class GRNN(SequentialRecommender):
         """
         Long Term
         """
+        tmp = self.gather_indexes(item_seq_emb_dropout,item_seq_len-1)
 
         long_term_intent = self.att_long_term(keys = item_seq_emb_dropout,
                                                queries = short_term_intent.unsqueeze(1),
                                                keys_graph_emb = graph_seq_emb,
                                                queries_graph_emb = short_term_intent.unsqueeze(1),
-                                               position_emb = position_embedding,
+                                               position_emb = reverse_position_embedding,
                                                item_seq=item_seq)
 
-        hybrid_preference = self.weight1*short_term_intent+self.weight2*long_term_intent
+        # hybrid_preference = self.weight1*short_term_intent + self.weight2*long_term_intent
+        hybrid_preference = self.output_layer(torch.cat((short_term_intent,long_term_intent),1))
+        # hybrid_preference = short_term_intent
 
         return hybrid_preference
 

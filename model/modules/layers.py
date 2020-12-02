@@ -461,8 +461,8 @@ class MultiHeadAttention(nn.Module):
         context_layer = context_layer.view(*new_context_layer_shape)
         hidden_states = self.dense(context_layer)
         hidden_states = self.out_dropout(hidden_states)
-        hidden_states = self.LayerNorm(hidden_states + queries)
-        hidden_states = hidden_states + queries
+        # hidden_states = self.LayerNorm(hidden_states + queries)
+        hidden_states = hidden_states+queries
 
         return hidden_states
 
@@ -571,9 +571,14 @@ class StructureAwareMultiHeadAttention(nn.Module):
         self.attention_head_size = int(hidden_size / n_heads)
         self.all_head_size = self.num_attention_heads * self.attention_head_size
 
+        self.structure_linear = nn.Linear(hidden_size*2,hidden_size)
+
         self.query = nn.Linear(hidden_size, self.all_head_size)
         self.key = nn.Linear(hidden_size, self.all_head_size)
         self.value = nn.Linear(hidden_size, self.all_head_size)
+
+        self.s_query = nn.Linear(hidden_size, self.all_head_size)
+        self.s_key = nn.Linear(hidden_size, self.all_head_size)
 
         self.semantic_weight = nn.Parameter(torch.Tensor((self.max_key_length)))
         self.structure_weight = nn.Parameter(torch.Tensor((self.max_key_length)))
@@ -593,23 +598,52 @@ class StructureAwareMultiHeadAttention(nn.Module):
         return x.permute(0, 2, 1, 3)
 
     def forward(self, queries,keys, queries_graph_emb, keys_graph_emb,attention_mask):
+
+        # TODO modified
+        # keys=self.structure_linear(torch.cat((keys,keys_graph_emb),2))
+
         mixed_query_layer = self.query(queries)
         mixed_key_layer = self.key(keys)
         mixed_value_layer = self.value(keys)
+
+
+        s_keys = self.structure_linear(torch.cat((keys, keys_graph_emb), 2))
+        s_keys = self.key(s_keys)
+        mixed_s_query_layer = self.s_query(queries_graph_emb)
+        mixed_s_key_layer = self.key(s_keys) # key都映射到一个空间
 
 
         query_layer = self.transpose_for_scores(mixed_query_layer)
         key_layer = self.transpose_for_scores(mixed_key_layer)
         value_layer = self.transpose_for_scores(mixed_value_layer)
 
-        s_query_layer = self.transpose_for_scores(queries_graph_emb)
-        s_key_layer = self.transpose_for_scores(keys)
-        s_structure_layer = self.transpose_for_scores(keys_graph_emb)
+        s_query_layer = self.transpose_for_scores(mixed_s_query_layer)
+        s_key_layer = self.transpose_for_scores(mixed_key_layer)
+        s_structure_layer = self.transpose_for_scores(mixed_s_key_layer)
 
+        # # v1
         # s_query_key =  self.relu_activation(torch.matmul(s_query_layer,s_key_layer.transpose(-1,-2)))
-        s_query_structure = self.relu_activation(torch.matmul(s_query_layer,s_structure_layer.transpose(-1,-2)))
+        s_query_structure = self.relu_activation(torch.matmul(query_layer,s_structure_layer.transpose(-1,-2)))
         # structure_gate = self.semantic_weight*s_query_key+self.structure_weight*s_query_structure+self.structure_bias
         structure_gate = torch.sigmoid(s_query_structure)
+        # v2
+        # # s_query_key =  self.relu_activation(torch.matmul(s_query_layer,s_key_layer.transpose(-1,-2)))
+        # s_query_structure = self.relu_activation(torch.matmul(s_query_layer, s_structure_layer.transpose(-1, -2)))
+        # # structure_gate = self.semantic_weight*s_query_key+self.structure_weight*s_query_structure+self.structure_bias
+        # structure_gate =  s_query_structure
+        # v3
+        # s_query_key =  self.relu_activation(torch.matmul(s_query_layer,s_key_layer.transpose(-1,-2)))
+        # s_query_structure = self.relu_activation(torch.matmul(s_query_layer, s_structure_layer.transpose(-1, -2)))
+        # structure_gate = self.semantic_weight*s_query_key+self.structure_weight*s_query_structure
+        # structure_gate = torch.sigmoid(structure_gate)
+
+        # v4
+        # s_query_key = self.relu_activation(torch.matmul(s_query_layer, s_key_layer.transpose(-1, -2)))
+        # s_query_structure = self.relu_activation(torch.matmul(s_query_layer, s_structure_layer.transpose(-1, -2)))
+        # structure_gate = self.semantic_weight * s_query_key + self.structure_weight * s_query_structure
+        # structure_gate = torch.sigmoid(structure_gate)
+
+
 
 
         # Take the dot product between "query" and "key" to get the raw attention scores.
@@ -638,9 +672,8 @@ class StructureAwareMultiHeadAttention(nn.Module):
         context_layer = context_layer.view(*new_context_layer_shape)
         hidden_states = self.dense(context_layer)
         hidden_states = self.out_dropout(hidden_states)
-        hidden_states = self.LayerNorm(hidden_states + queries)
+        # hidden_states = self.LayerNorm(hidden_states + queries)
         hidden_states = hidden_states + queries
-
         return hidden_states
 
 
