@@ -86,8 +86,8 @@ def load_hyper_param(config,model):
 if __name__ == "__main__":
 
     model = 'LESSR_fast'
-    dataset = 'order'
-    gpu_id = 1
+    dataset = 'movie_tv'
+    gpu_id = 3
     epochs = 300
     train_batch_size = 512
 
@@ -160,15 +160,14 @@ if __name__ == "__main__":
             logger.info(' start training, running parameters:')
             logger.info(config)
 
-            if config['model'] == 'LESSR':
-                model = LESSR_fast(config, num_items)
+            model_obj = LESSR_fast(config, num_items)
             device = config['device']
 
 
-            model = model.to(device)
+            model_obj = model_obj.to(device)
 
             runner = TrainRunnerLessr(
-                model,
+                model_obj,
                 train_loader,
                 test_loader,
                 dev_loader,

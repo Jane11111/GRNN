@@ -115,6 +115,7 @@ class TrainRunnerNormal:
 
         # mean_loss = 0
         for epoch in range(epochs):
+
             self.model.train()
             for batch in self.train_loader:
                 user_id, item_seq, target_id, item_seq_len = prepare_batch(batch, self.device)
@@ -175,6 +176,8 @@ class TrainRunnerNormal:
 
             if self.early_stop>=self.patience:
                 break
+
+
         return self.best_test_hit_5, self.best_test_ndcg_5, self.best_test_mrr_5, \
         self.best_test_hit_10, self.best_test_ndcg_10, self.best_test_mrr_10, \
         self.best_test_hit_20, self.best_test_ndcg_20, self.best_test_mrr_20,\
@@ -237,8 +240,8 @@ class TrainRunner:
         with th.no_grad():
             for batch in data_loader:
                 user_id, item_seq, target_id, item_seq_len, \
-                adj_in, adj_out = prepare_batch(batch, device)
-                logits = model.calculate_logits(item_seq, item_seq_len, adj_in, adj_out)
+                adj_in  = prepare_batch(batch, device)
+                logits = model.calculate_logits(item_seq, item_seq_len, adj_in )
                 batch_size = logits.size(0)
                 num_samples += batch_size
                 labels = target_id.unsqueeze(-1)
@@ -272,16 +275,21 @@ class TrainRunner:
 
         # mean_loss = 0
         for epoch in range(epochs):
+            # i = 0
+            # for name, param in self.model.named_parameters():
+            #     i += 1
+            #     if i == 100:
+            #         print(name, '      ', param)
+
             self.model.train()
             for batch in self.train_loader:
                 user_id, item_seq, target_id, item_seq_len,\
-                adj_in, adj_out = prepare_batch(batch, self.device)
+                adj_in = prepare_batch(batch, self.device)
                 self.optimizer.zero_grad()
-                logits = self.model.calculate_logits(item_seq, item_seq_len, adj_in, adj_out)
+                logits = self.model.calculate_logits(item_seq, item_seq_len, adj_in )
                 loss = self.criterion(logits, target_id)
                 loss.backward()
                 self.optimizer.step()
-
                 self.batch += 1
             # TODO Early Stop
             # TODO @k
@@ -422,8 +430,18 @@ class TrainRunnerNormal:
 
     def train(self, epochs ):
 
+
+
         # mean_loss = 0
         for epoch in range(epochs):
+
+            # i = 0
+            # for name, param in self.model.named_parameters():
+            #     i += 1
+            #     if i == 5:
+            #         print(name, '      ', param)
+            # print(i)
+            # print('***************')
             self.model.train()
             for batch in self.train_loader:
                 user_id, item_seq, target_id, item_seq_len = prepare_batch(batch, self.device)

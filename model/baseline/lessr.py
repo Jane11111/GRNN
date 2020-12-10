@@ -206,6 +206,7 @@ class LESSR(SequentialRecommender):
         input_dim += embedding_dim
         self.batch_norm = nn.BatchNorm1d(input_dim)
         self.fc_sr = nn.Linear(input_dim, embedding_dim, bias=False)
+        print('............initializing................')
 
     def forward(self, mg, sg):
         iid = mg.ndata['iid']

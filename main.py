@@ -13,7 +13,7 @@ from utils.data.preprocess import PrepareData
 from utils.data.dataset import PaddedDataset,PaddedDatasetNormal
 from utils.data.collate import collate_fn,collate_fn_normal
 from utils.trainer import TrainRunner
-from model.grnn import GRNN,GRNN_mlp,GRNN_no_order
+from model.grnn import GRNN ,GRNN_only_graph, GRNN_weak_order
 from model.grnn_v1 import GRNN_v1
 from model.baseline.gru4rec import GRU4Rec
 # from config.configurator import Config
@@ -75,11 +75,34 @@ def load_data(prepare_data_model):
     return num_items, train_loader, test_loader, dev_loader
 
 
+def load_hyper_param(config ):
+
+
+    res = []
+    for dropout_prob in [0,0.25   ]:
+        for gnn_hidden_dropout_prob in [0 ]:
+            for gnn_att_dropout_prob in [0 ]:
+                for agg_layer in [1,2,3]:
+                    for embedding_size in [128 ]:
+                        for hidden_size in [128  ]:
+                            for lr in [0.005, 0.001, 0.0005]:
+                                cur_config = config.copy()
+                                cur_config['hidden_size'] = hidden_size
+                                cur_config['embedding_size'] = embedding_size
+                                cur_config['gnn_hidden_dropout_prob'] = gnn_hidden_dropout_prob
+                                cur_config['gnn_att_dropout_prob'] = gnn_att_dropout_prob
+                                cur_config['learning_rate'] = lr
+                                cur_config['dropout_prob'] = dropout_prob
+                                cur_config['agg_layer'] = agg_layer
+                                res.append(cur_config)
+    return res
+
+
 if __name__ == "__main__":
 
     model = 'GRNN'
-    dataset = 'music'
-    gpu_id = 3
+    dataset = 'tmall_buy'
+    gpu_id = 0
     epochs = 300
     train_batch_size = 512
 
@@ -87,14 +110,16 @@ if __name__ == "__main__":
               'dataset': dataset,
               'gpu_id': gpu_id,
               'epochs': epochs,
-              'max_len':50,
-              'train_batch_size':train_batch_size,
-              'device': 'cuda:'+str(gpu_id) }
+              'max_len': 50,
+              'train_batch_size': train_batch_size,
+              'device': 'cuda:' + str(gpu_id)}
 
 
     config_path = './data/config/model/'+model+'/config.yaml'
     with open(config_path, 'r') as f:
         dict = yaml.load(f.read(),Loader=yaml.FullLoader)
+
+
 
     for key in dict:
         config[key] = dict[key]
@@ -114,8 +139,6 @@ if __name__ == "__main__":
 
     max_len = config['max_len']
 
-    prepare_data_model = PrepareData(config, logger)
-    num_items, train_loader, test_loader, dev_loader = load_data(prepare_data_model)
 
     founded_best_hit_10 = 0
     founded_best_ndcg_10 = 0
@@ -127,81 +150,70 @@ if __name__ == "__main__":
 
     # TODO 是不是可以从这里循环调参数
     best_config = config.copy()
+    config_lst = load_hyper_param(config)
 
-    for dropout_prob in [0,0.25  ]:
-        for gnn_hidden_dropout_prob in [0 ]:
-            for gnn_att_dropout_prob in [0 ]:
-                for n_layers in [1 ]:
-                    for n_heads in [1 ]:
-                        for embedding_size in [128 ]:
-                            for hidden_size in [128  ]:
-                                for lr in [0.005 ,0.001 ]:
-                                    config['hidden_size'] = hidden_size
-                                    config['embedding_size'] = embedding_size
-                                    config['gnn_hidden_dropout_prob'] = gnn_hidden_dropout_prob
-                                    config['gnn_att_dropout_prob'] = gnn_att_dropout_prob
-                                    config['n_layers'] = n_layers
-                                    config['n_heads'] = n_heads
-                                    config['learning_rate'] = lr
-                                    config['dropout_prob'] = dropout_prob
-
-                                    logger.info(' start training, running parameters:')
-                                    logger.info(config)
-
-                                    if model == 'GRNN':
-                                        model = GRNN(config, num_items)
-                                    elif model == 'GRNN_mlp':
-                                        model = GRNN_mlp(config,num_items)
-                                    elif model == 'GRNN_no_order':
-                                        model = GRNN_no_order(config,num_items)
-                                    elif model == 'GRNN_v1':
-                                        model = GRNN_v1(config,num_items)
+    prepare_data_model = PrepareData(config, logger)
+    num_items, train_loader, test_loader, dev_loader = load_data(prepare_data_model)
 
 
-                                    device = config['device']
-                                    model = model.to(device)
+    for config in config_lst:
 
-                                    runner = TrainRunner(
-                                        model,
-                                        train_loader,
-                                        test_loader,
-                                        dev_loader,
-                                        device=device,
-                                        lr=config['learning_rate'],
-                                        weight_decay=0,
-                                        logger = logger,
-                                    )
 
-                                    best_test_hit_5, best_test_ndcg_5, best_test_mrr_5, \
-                                    best_test_hit_10, best_test_ndcg_10, best_test_mrr_10, \
-                                    best_test_hit_20, best_test_ndcg_20, best_test_mrr_20, \
-                                    best_hr_10, best_ndcg_10 = \
-                                        runner.train(config['epochs'])
+        logger.info(' start training, running parameters:')
+        logger.info(config)
 
-                                    if best_hr_10 > founded_best_hit_10 and best_ndcg_10 > founded_best_ndcg_10:
-                                        founded_best_hit_10 = best_hr_10
-                                        founded_best_ndcg_10 = best_ndcg_10
-                                        best_config = config.copy()
-                                        print('------------founded a better result--------------')
+        if config['model'] == 'GRNN':
+            model_obj = GRNN(config, num_items)
 
-                                        founded_best_test_hit_5, founded_best_test_ndcg_5, founded_best_test_mrr_5, \
-                                        founded_best_test_hit_10, founded_best_test_ndcg_10, founded_best_test_mrr_10, \
-                                        founded_best_test_hit_20, founded_best_test_ndcg_20, founded_best_test_mrr_20, = \
-                                            best_test_hit_5, best_test_ndcg_5, best_test_mrr_5, \
-                                            best_test_hit_10, best_test_ndcg_10, best_test_mrr_10, \
-                                            best_test_hit_20, best_test_ndcg_20, best_test_mrr_20
-                                    logger.info('finished')
-                                    logger.info('[current config]')
-                                    logger.info(config)
-                                    logger.info('[best config]')
-                                    logger.info(best_config)
-                                    logger.info('[score]: founded best [hit@10: %.5f, ndcg@10: %.5f], current [hit@10: %.5f, ndcg@10: %.5f]'
-                                                %(founded_best_hit_10, founded_best_ndcg_10, best_hr_10, best_ndcg_10))
-                                    # logger.info('.................for testing modification...................')
-                                    logger.info('<founded best test> hit@5: %.5f, ndcg@5: %.5f, mrr@5: %.5f,'
-                                                'hit@10: %.5f, ndcg@10: %.5f, mrr@10: %.5f,'
-                                                'hit@20: %.5f, ndcg@20: %.5f, mrr@20: %.5f'
-                                                % (founded_best_test_hit_5, founded_best_test_ndcg_5, founded_best_test_mrr_5,
-                                                   founded_best_test_hit_10, founded_best_test_ndcg_10, founded_best_test_mrr_10,
-                                                   founded_best_test_hit_20, founded_best_test_ndcg_20, founded_best_test_mrr_20))
-                                    logger.info('=================finished current search======================')
+        elif config['model'] == 'GRNN_only_graph':
+            model_obj = GRNN_only_graph(config,num_items)
+        elif config['model'] == 'GRNN_weak_order':
+            model_obj = GRNN_weak_order(config, num_items)
+
+        device = config['device']
+        model_obj = model_obj.to(device)
+
+        runner = TrainRunner(
+            model_obj,
+            train_loader,
+            test_loader,
+            dev_loader,
+            device=device,
+            lr=config['learning_rate'],
+            weight_decay=0,
+            logger = logger,
+        )
+
+        best_test_hit_5, best_test_ndcg_5, best_test_mrr_5, \
+        best_test_hit_10, best_test_ndcg_10, best_test_mrr_10, \
+        best_test_hit_20, best_test_ndcg_20, best_test_mrr_20, \
+        best_hr_10, best_ndcg_10 = \
+            runner.train(config['epochs'])
+
+        if best_hr_10 > founded_best_hit_10 and best_ndcg_10 > founded_best_ndcg_10:
+            founded_best_hit_10 = best_hr_10
+            founded_best_ndcg_10 = best_ndcg_10
+            best_config = config.copy()
+            logger.info('------------founded a better result--------------')
+
+            founded_best_test_hit_5, founded_best_test_ndcg_5, founded_best_test_mrr_5, \
+            founded_best_test_hit_10, founded_best_test_ndcg_10, founded_best_test_mrr_10, \
+            founded_best_test_hit_20, founded_best_test_ndcg_20, founded_best_test_mrr_20, = \
+                best_test_hit_5, best_test_ndcg_5, best_test_mrr_5, \
+                best_test_hit_10, best_test_ndcg_10, best_test_mrr_10, \
+                best_test_hit_20, best_test_ndcg_20, best_test_mrr_20
+        logger.info('finished')
+        logger.info('[current config]')
+        logger.info(config)
+        logger.info('[best config]')
+        logger.info(best_config)
+        logger.info('[score]: founded best [hit@10: %.5f, ndcg@10: %.5f], current [hit@10: %.5f, ndcg@10: %.5f]'
+                    %(founded_best_hit_10, founded_best_ndcg_10, best_hr_10, best_ndcg_10))
+        # logger.info('.................for testing modification...................')
+        logger.info('<founded best test> hit@5: %.5f, ndcg@5: %.5f, mrr@5: %.5f,'
+                    'hit@10: %.5f, ndcg@10: %.5f, mrr@10: %.5f,'
+                    'hit@20: %.5f, ndcg@20: %.5f, mrr@20: %.5f'
+                    % (founded_best_test_hit_5, founded_best_test_ndcg_5, founded_best_test_mrr_5,
+                       founded_best_test_hit_10, founded_best_test_ndcg_10, founded_best_test_mrr_10,
+                       founded_best_test_hit_20, founded_best_test_ndcg_20, founded_best_test_mrr_20))
+        logger.info('=================finished current search======================')

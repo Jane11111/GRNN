@@ -1,5 +1,3 @@
-# model and data
-model: GRNN_mlp
 
 # model
 embedding_size: 128

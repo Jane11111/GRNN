@@ -1,5 +1,3 @@
-# model and data
-model: LESSR
 
 # model
 embedding_size: 128

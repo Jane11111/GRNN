@@ -429,12 +429,9 @@ class MultiHeadAttention(nn.Module):
     def forward(self, queries,keys, attention_mask):
         mixed_query_layer = self.query(queries)
         mixed_key_layer = self.key(keys)
-        # TODO maybe a trick
-        # mixed_query_layer = input_tensor
-        # mixed_key_layer = input_tensor
-
-
         mixed_value_layer = self.value(keys)
+        # mixed_key_layer = keys
+        # mixed_value_layer = keys
 
         query_layer = self.transpose_for_scores(mixed_query_layer)
         key_layer = self.transpose_for_scores(mixed_key_layer)
@@ -617,40 +614,21 @@ class StructureAwareMultiHeadAttention(nn.Module):
         key_layer = self.transpose_for_scores(mixed_key_layer)
         value_layer = self.transpose_for_scores(mixed_value_layer)
 
-        s_query_layer = self.transpose_for_scores(mixed_s_query_layer)
-        s_key_layer = self.transpose_for_scores(mixed_key_layer)
+        s_query_layer = self.transpose_for_scores(queries)
+        s_key_layer = self.transpose_for_scores(keys)
         s_structure_layer = self.transpose_for_scores(mixed_s_key_layer)
 
-        # # v1
-        # s_query_key =  self.relu_activation(torch.matmul(s_query_layer,s_key_layer.transpose(-1,-2)))
+        # v1
+        # s_query_key =  self.relu_activation(torch.matmul(s_query_layer,s_key_layer.transpose(-1,-2)))# 未过kqv的score
         s_query_structure = self.relu_activation(torch.matmul(query_layer,s_structure_layer.transpose(-1,-2)))
         # structure_gate = self.semantic_weight*s_query_key+self.structure_weight*s_query_structure+self.structure_bias
-        structure_gate = torch.sigmoid(s_query_structure)
-        # v2
-        # # s_query_key =  self.relu_activation(torch.matmul(s_query_layer,s_key_layer.transpose(-1,-2)))
-        # s_query_structure = self.relu_activation(torch.matmul(s_query_layer, s_structure_layer.transpose(-1, -2)))
-        # # structure_gate = self.semantic_weight*s_query_key+self.structure_weight*s_query_structure+self.structure_bias
-        # structure_gate =  s_query_structure
-        # v3
-        # s_query_key =  self.relu_activation(torch.matmul(s_query_layer,s_key_layer.transpose(-1,-2)))
-        # s_query_structure = self.relu_activation(torch.matmul(s_query_layer, s_structure_layer.transpose(-1, -2)))
-        # structure_gate = self.semantic_weight*s_query_key+self.structure_weight*s_query_structure
-        # structure_gate = torch.sigmoid(structure_gate)
-
-        # v4
-        # s_query_key = self.relu_activation(torch.matmul(s_query_layer, s_key_layer.transpose(-1, -2)))
-        # s_query_structure = self.relu_activation(torch.matmul(s_query_layer, s_structure_layer.transpose(-1, -2)))
-        # structure_gate = self.semantic_weight * s_query_key + self.structure_weight * s_query_structure
-        # structure_gate = torch.sigmoid(structure_gate)
-
-
-
+        structure_gate = s_query_structure
 
         # Take the dot product between "query" and "key" to get the raw attention scores.
         attention_scores = torch.matmul(query_layer, key_layer.transpose(-1, -2))
 
         # TODO structure gate
-        attention_scores *= structure_gate
+        # attention_scores *= structure_gate
 
 
 

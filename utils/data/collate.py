@@ -59,16 +59,16 @@ def seq_to_shortcut_graph(seq):
 
 def collate_fn(samples):
     # samples = np.array(samples)
-    user_id, item_seq, target_id, item_seq_len,  adj_in, adj_out = zip(*samples)
+    user_id, item_seq, target_id, item_seq_len,  adj_in  = zip(*samples)
 
     user_id = torch.tensor(user_id,dtype = torch.long)
     item_seq = torch.tensor(item_seq, dtype=torch.long)
     target_id = torch.tensor(target_id, dtype=torch.long)
     item_seq_len = torch.tensor(item_seq_len, dtype=torch.long)
     adj_in = torch.tensor(adj_in, dtype=torch.long)
-    adj_out = torch.tensor(adj_out, dtype=torch.long)
+    # adj_out = torch.tensor(adj_out, dtype=torch.long)
 
-    return user_id, item_seq, target_id, item_seq_len,  adj_in, adj_out
+    return user_id, item_seq, target_id, item_seq_len,  adj_in
 
 
 

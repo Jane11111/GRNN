@@ -21,18 +21,19 @@ class PaddedDataset(Dataset):
         target_id = seq[2]
         length = seq[3]
         u_A_in = seq[4]
-        u_A_out = seq[5]
+        # u_A_out = seq[5]
 
         seq_padding_size = [0, self.max_len-length]
         matrix_padding_size = [(0,self.max_len -length), (0, self.max_len - length)]
 
         padded_item_lst = np.pad(item_lst, seq_padding_size,'constant')
         padded_u_A_in = np.pad(u_A_in, matrix_padding_size,'constant',constant_values=(0,0))
-        padded_u_A_out = np.pad(u_A_out, matrix_padding_size, 'constant', constant_values=(0, 0))
-
+        # padded_u_A_out = np.pad(u_A_out, matrix_padding_size, 'constant', constant_values=(0, 0))
+        # padded_u_A_in = np.array(u_A_in)
+        # padded_u_A_out = np.array(u_A_out)
 
         return  [user_id, padded_item_lst, target_id, length,
-                               padded_u_A_in,padded_u_A_out]
+                               padded_u_A_in ]
         # return seq
 
     def __len__(self):

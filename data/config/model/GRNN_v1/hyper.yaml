@@ -1,4 +1,0 @@
-learning_rate:  [0.05,0.01,0.005,0.001,0.0005]
-embedding_size: [32,64,128]
-hidden_size: [32,64,128]
-dropout_prob: [0, 0.25,0.5]

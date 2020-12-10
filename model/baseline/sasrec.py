@@ -86,6 +86,7 @@ class SASRec(SequentialRecommender):
         # stdv = 1.0 / math.sqrt(self.hidden_size)
         # for weight in self.parameters():
         #     weight.data.uniform_(-0.1, 0.1)
+        print('............initializing................')
 
     def get_attention_mask(self, item_seq):
         """Generate left-to-right uni-directional attention mask for multi-head attention."""
@@ -115,7 +116,7 @@ class SASRec(SequentialRecommender):
 
         extended_attention_mask = self.get_attention_mask(item_seq)
 
-        trm_output = self.trm_encoder(input_emb,
+        trm_output = self.trm_encoder(input_emb,input_emb,
                                       extended_attention_mask,
                                       output_all_encoded_layers=True)
         output = trm_output[-1]

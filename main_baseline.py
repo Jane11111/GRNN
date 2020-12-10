@@ -23,6 +23,7 @@ from model.baseline.sasrec import SASRec
 from model.baseline.stamp import STAMP
 from model.baseline.srgnn import SRGNN
 from model.baseline.gcsan import GCSAN
+from model.grnn import GRNN
 from model.baseline.nextitnet import NextItNet
 # from model.baseline.lessr import LESSR
 # from config.configurator import Config
@@ -83,13 +84,14 @@ def load_data(prepare_data_model):
 
 
 def load_hyper_param( config,model):
-    learning_rate_lst = [0.001, 0.005, 0.0001, 0.0005]
+    learning_rate_lst = [0.001,0.005,0.0001, 0.0005]
     step_lst = [1,2,3,4]
     n_layers_lst = [1,2,3]
-    n_heads_lst = [1,2,3]
+    n_heads_lst = [1,2]
     dropout_prob_lst = [0,0.25,0.5]
-    narm_dropout_probs = [[0,0],[0,0.25],[0,0.5],[0.25,0.25],[0.25,0.5],[0.5,0.5],
-                          [0.25, 0], [0.5, 0], [0.5, 0.25]]
+    narm_dropout_probs = [[0,0],[0,0.25],[0,0.5],[0.25,0.25],
+                          [0.25,0.5],[0.5,0.5], [0.25, 0],
+                          [0.5, 0], [0.5, 0.25]]
     # narm_dropout_probs = [[0.25,0],[0.5,0],[0.5,0.25]]
     block_lst = [1,3,5]
 
@@ -156,14 +158,25 @@ def load_hyper_param( config,model):
                 cur_config['learning_rate'] = learning_rate
                 cur_config['block_num'] = block
                 res.append(cur_config)
+    elif model == 'GRNN':
+        for learning_rate in learning_rate_lst:
+            for dropout_prob in dropout_prob_lst:
+                cur_config = config.copy()
+                cur_config['learning_rate'] = learning_rate
+                cur_config['dropout_prob'] = dropout_prob
+                cur_config['gnn_hidden_dropout_prob'] = 0
+                cur_config['gnn_att_dropout_prob'] = 0
+                cur_config['n_layers'] = 1
+                cur_config['n_heads'] = 1
+                res.append(cur_config)
     return res
 
 
 if __name__ == "__main__":
 
-    model = 'NARM'
-    dataset = 'order'
-    gpu_id = 0
+    model = 'GCSAN'
+    dataset = 'tmall_buy'
+    gpu_id = 1
     epochs = 300
     train_batch_size = 512
 
@@ -214,52 +227,37 @@ if __name__ == "__main__":
     best_config = config.copy()
 
     config_lst = load_hyper_param(config.copy(),model)
-    # TODO SRGNN 模型还有一个step = 4 需要运行
+
     for config in config_lst:
-    # for lr in [0.001, 0.005, 0.0001, 0.0005]:
-    #     # for dropout_probs in [[0,0],[0,0.25],[0,0.5],[0.25,0.25],[0.25,0.5],[0.5,0.5]]:# NARM
-    #     for dropout in [0, 0.25, 0.5]:  # GRU4Rec
-    #         # for step in [1,2,3,4]:
-    #         # for n_layers in [1,2 ]:
-    #         #     for n_heads in [1,2 ]:
-    #         #         for hidden_dropout_prob in [0,0.25,0.5]:
-    #         #             for attn_dropout_prob in [0,0.25,0.5]:
-    #         config['learning_rate'] = lr
-    #         # config['step'] = step # SRGNN, GCSAN, LESSR
-    #         # config['n_layers'] = n_layers # SASRec
-    #         # config['n_heads'] = n_heads # SASRec
-    #         # config['hidden_dropout_prob'] = hidden_dropout_prob # SASRec
-    #         # config['attn_dropout_prob'] = attn_dropout_prob # SASRec
-    #         # config['dropout_prob'] = dropout # GRU4Rec
-    #         # config['dropout_probs'] = dropout_probs# NARM
-    #         config['dropout_prob'] = dropout # GRU4Rec
+
 
         logger.info(' start training, running parameters:')
         logger.info(config)
 
         if config['model'] == 'GRU4Rec':
-            model = GRU4Rec(config, num_items)
+            model_obj = GRU4Rec(config, num_items)
         elif config['model'] == 'NARM':
-            model = NARM(config, num_items)
+            model_obj = NARM(config, num_items)
         elif config['model'] == 'SASRec':
-            model = SASRec(config,num_items)
+            model_obj = SASRec(config,num_items)
         elif config['model'] =='STAMP':
-            model = STAMP(config, num_items)
+            model_obj = STAMP(config, num_items)
         elif config['model'] == 'SRGNN':
-            model = SRGNN(config,num_items)
+            model_obj = SRGNN(config,num_items)
         elif config['model'] == 'GCSAN':
-            model = GCSAN(config,num_items)
+            model_obj = GCSAN(config,num_items)
         elif config['model'] == 'NextItNet':
-            model = NextItNet(config, num_items)
+            model_obj = NextItNet(config, num_items)
+        elif config['model'] == 'GRNN':
+            model_obj = GRNN(config, num_items)
         # elif config['model'] == 'LESSR':
         #     model = LESSR(config, num_items)
         device = config['device']
 
-
-        model = model.to(device)
+        model_obj = model_obj.to(device)
 
         runner = TrainRunnerNormal(
-            model,
+            model_obj,
             train_loader,
             test_loader,
             dev_loader,

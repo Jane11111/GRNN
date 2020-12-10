@@ -132,6 +132,7 @@ class GCSAN(SequentialRecommender):
 
         # parameters initialization
         self.apply(self._init_weights)
+        print('............initializing................')
 
     def _init_weights(self, module):
         """ Initialize the weights """
@@ -207,7 +208,7 @@ class GCSAN(SequentialRecommender):
         a = seq_hidden
         attention_mask = self.get_attention_mask(item_seq)
 
-        outputs = self.self_attention(a, attention_mask, output_all_encoded_layers=True)
+        outputs = self.self_attention(a,a, attention_mask, output_all_encoded_layers=True)
         output = outputs[-1]
         at = self.gather_indexes(output, item_seq_len - 1)
         seq_output = self.weight * at + (1 - self.weight) * ht

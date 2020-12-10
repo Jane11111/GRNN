@@ -134,6 +134,7 @@ class SRGNN(SequentialRecommender):
 
         # parameters initialization
         self._reset_parameters()
+        print('............initializing................')
 
     def _reset_parameters(self):
         stdv = 1.0 / math.sqrt(self.embedding_size)

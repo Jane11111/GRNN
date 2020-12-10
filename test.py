@@ -8,11 +8,13 @@ import numpy as np
 import time
 from utils.data.preprocess import PrepareData
 from logging import getLogger
+import time
 
-
-for dataset in [ 'taobaoapp' ]:
+for dataset in ['tmall_buy', 'music','movie_tv','elec','order','movielen' ]:
 
     config= {'dataset':dataset}
+    cur_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+    print(cur_time)
     print(dataset)
     logger = getLogger('test')
     prepare_data_model = PrepareData(config,logger )

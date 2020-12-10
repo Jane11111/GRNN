@@ -59,6 +59,7 @@ class GRU4Rec(SequentialRecommender):
 
         # parameters initialization
         self.apply(self._init_weights)
+        print('............initializing................')
 
     def _init_weights(self, module):
         if isinstance(module, nn.Embedding):
