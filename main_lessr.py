@@ -3,18 +3,15 @@
 # @Author  : zxl
 # @FileName: main.py
 
-import argparse
-
 import warnings
 
 warnings.filterwarnings('ignore')
 
-from pathlib import Path
 import torch as th
 from torch.utils.data import DataLoader
-from utils.data.preprocess import PrepareData
-from utils.data.dataset import DatasetLessr
-from utils.data.collate import collate_fn_lessr
+from prepare_data.preprocess import PrepareData
+from prepare_data.dataset import DatasetLessr
+from prepare_data.collate import collate_fn_lessr
 from utils.trainer import TrainRunnerLessr
 
 from model.baseline.lessr_fast import LESSR_fast
@@ -86,8 +83,8 @@ def load_hyper_param(config,model):
 if __name__ == "__main__":
 
     model = 'LESSR_fast'
-    dataset = 'movie_tv'
-    gpu_id = 3
+    dataset = 'pet'
+    gpu_id = 0
     epochs = 300
     train_batch_size = 512
 

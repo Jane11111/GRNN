@@ -136,15 +136,7 @@ class GCSAN(SequentialRecommender):
 
     def _init_weights(self, module):
         """ Initialize the weights """
-        if isinstance(module, (nn.Linear, nn.Embedding)):
-            # Slightly different from the TF version which uses truncated_normal for initialization
-            # cf https://github.com/pytorch/pytorch/pull/5617
-            module.weight.data.normal_(mean=0.0, std=self.initializer_range)
-        elif isinstance(module, nn.LayerNorm):
-            module.bias.data.zero_()
-            module.weight.data.fill_(1.0)
-        if isinstance(module, nn.Linear) and module.bias is not None:
-            module.bias.data.zero_()
+        pass
 
     def get_attention_mask(self, item_seq):
         """Generate left-to-right uni-directional attention mask for multi-head attention."""

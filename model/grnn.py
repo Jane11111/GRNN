@@ -395,14 +395,7 @@ class GNN(nn.Module):
 
 
 class GRNN(SequentialRecommender):
-    r"""GRU4Rec is a model that incorporate RNN for recommendation.
 
-    Note:
-
-        Regarding the innovation of this article,we can only achieve the data augmentation mentioned
-        in the paper and directly output the embedding of the item,
-        in order that the generation method we used is common to other sequential models.
-    """
 
     def __init__(self, config, item_num):
         super(GRNN, self).__init__(config, item_num)
@@ -433,6 +426,223 @@ class GRNN(SequentialRecommender):
 
         # GRU
         self.gru_layers= ModifiedGRU(
+            input_size=self.embedding_size + self.embedding_size,
+            hidden_size=self.hidden_size,
+        ).to(config['device'])
+
+        self.dense = nn.Linear(self.hidden_size  , self.embedding_size )
+        # parameters initialization
+        self.apply(self._init_weights)
+        print('............initializing................')
+
+
+
+    def _init_weights(self, module):
+
+
+        if isinstance(module,nn.GRU) or isinstance(module, ModifiedGRU)  :
+
+            for weight in module.parameters():
+                if len(weight.shape) == 2:
+                    nn.init.orthogonal_(weight.data)
+        else:
+            stdv = 1.0 / math.sqrt(self.embedding_size)
+            for weight in self.parameters():
+                weight.data.uniform_(-stdv, stdv)
+
+
+    def get_pos_emb(self,item_seq,item_seq_len):
+        position_ids = torch.arange(item_seq.size(1), dtype=torch.long, device=item_seq.device)
+        position_ids = position_ids.unsqueeze(0).expand_as(item_seq)
+        new_seq_len = item_seq_len.view(-1, 1)
+        reverse_pos_id = new_seq_len - position_ids
+        reverse_pos_id = torch.clamp(reverse_pos_id, 0)
+
+        position_embedding = self.position_embedding(position_ids)
+        reverse_position_embedding = self.reverse_position_embedding(reverse_pos_id)
+        return position_embedding, reverse_position_embedding
+
+    def forward(self, item_seq, adj_in, item_seq_len):
+
+
+        position_embedding,reverse_position_embedding = self.get_pos_emb(item_seq,item_seq_len)
+
+        item_seq_emb = self.item_embedding(item_seq)
+        item_seq_emb_dropout = self.emb_dropout(item_seq_emb)
+
+        """
+        **********************FINAL MODEL***********************
+        """
+        """
+        GraphEmb
+        """
+        gnn_inputs = item_seq_emb_dropout
+        graph_outputs = self.gnn_layers(item_seq_emb=gnn_inputs,
+                                 position_emb= position_embedding,
+                                 adj_mat = adj_in)
+        """
+        GRUEmb
+        """
+        gru_inputs = torch.cat((item_seq_emb_dropout,graph_outputs ),2)
+        gru_outputs, _ = self.gru_layers(gru_inputs)
+
+        gru_outputs = self.dense(gru_outputs)
+
+
+        """
+        READOUT FUNCTION
+        """
+        gru_intent = self.gather_indexes(gru_outputs, item_seq_len - 1)
+        graph_intent = self.gather_indexes(graph_outputs, item_seq_len - 1)
+
+        hybrid_preference =   gru_intent + graph_intent
+
+
+        return hybrid_preference
+
+    def calculate_logits(self, item_seq, item_seq_len, adj_in ):
+
+
+        seq_output = self.forward(item_seq, adj_in,   item_seq_len)
+        test_item_emb = self.item_embedding.weight
+        logits = torch.matmul(seq_output, test_item_emb.transpose(0, 1))
+        return logits
+
+
+class GRNN_only_graph(SequentialRecommender):
+
+
+    def __init__(self, config, item_num):
+        super(GRNN_only_graph, self).__init__(config, item_num)
+
+        # load parameters info
+        self.embedding_size = config['embedding_size']
+        self.hidden_size = config['hidden_size']
+        self.step = config['step']
+        self.num_layers = config['num_layers']
+        self.dropout_prob = config['dropout_prob']
+        self.device = config['device']
+        self.gnn_hidden_dropout_prob = config['gnn_hidden_dropout_prob']
+        self.gnn_att_dropout_prob = config['gnn_att_dropout_prob']
+        self.agg_layer = config['agg_layer']
+
+        # define layers and loss
+        self.item_embedding = nn.Embedding(self.n_items, self.embedding_size, padding_idx=0)
+        self.emb_dropout = nn.Dropout(self.dropout_prob)
+        # position embedding
+        self.position_embedding = nn.Embedding(self.max_seq_length+1, self.hidden_size)
+        self.reverse_position_embedding = nn.Embedding(self.max_seq_length + 1, self.hidden_size)
+
+        self.gnn_layers = ConnectedGNN(embedding_size=self.embedding_size ,
+                               n_layers=self.agg_layer,
+                               n_heads=1,
+                               hidden_dropout_prob=self.gnn_hidden_dropout_prob,
+                               att_dropout_prob=self.gnn_att_dropout_prob )
+
+
+        self.dense = nn.Linear(self.hidden_size  , self.embedding_size )
+        # parameters initialization
+        self.apply(self._init_weights)
+        print('............initializing................')
+
+
+
+    def _init_weights(self, module):
+
+
+        if isinstance(module,nn.GRU) or isinstance(module, ModifiedGRU)  :
+
+            for weight in module.parameters():
+                if len(weight.shape) == 2:
+                    nn.init.orthogonal_(weight.data)
+        else:
+            stdv = 1.0 / math.sqrt(self.embedding_size)
+            for weight in self.parameters():
+                weight.data.uniform_(-stdv, stdv)
+
+
+    def get_pos_emb(self,item_seq,item_seq_len):
+        position_ids = torch.arange(item_seq.size(1), dtype=torch.long, device=item_seq.device)
+        position_ids = position_ids.unsqueeze(0).expand_as(item_seq)
+        new_seq_len = item_seq_len.view(-1, 1)
+        reverse_pos_id = new_seq_len - position_ids
+        reverse_pos_id = torch.clamp(reverse_pos_id, 0)
+
+        position_embedding = self.position_embedding(position_ids)
+        reverse_position_embedding = self.reverse_position_embedding(reverse_pos_id)
+        return position_embedding, reverse_position_embedding
+
+    def forward(self, item_seq, adj_in, item_seq_len):
+
+
+        position_embedding,reverse_position_embedding = self.get_pos_emb(item_seq,item_seq_len)
+
+        item_seq_emb = self.item_embedding(item_seq)
+        item_seq_emb_dropout = self.emb_dropout(item_seq_emb)
+
+        """
+        GraphEmb
+        """
+        gnn_inputs = item_seq_emb_dropout
+        graph_outputs = self.gnn_layers(item_seq_emb=gnn_inputs,
+                                 position_emb=reverse_position_embedding,
+                                 adj_mat = adj_in)
+
+
+        """
+        READOUT FUNCTION
+        """
+        graph_intent = self.gather_indexes(graph_outputs, item_seq_len - 1)
+
+        hybrid_preference = graph_intent
+
+
+        return hybrid_preference
+
+    def calculate_logits(self, item_seq, item_seq_len, adj_in ):
+
+
+        seq_output = self.forward(item_seq, adj_in,   item_seq_len)
+        test_item_emb = self.item_embedding.weight
+        logits = torch.matmul(seq_output, test_item_emb.transpose(0, 1))
+        return logits
+
+
+
+
+
+class GRNN_weak_order(SequentialRecommender):
+
+
+    def __init__(self, config, item_num):
+        super(GRNN_weak_order, self).__init__(config, item_num)
+
+        # load parameters info
+        self.embedding_size = config['embedding_size']
+        self.hidden_size = config['hidden_size']
+        self.step = config['step']
+        self.num_layers = config['num_layers']
+        self.dropout_prob = config['dropout_prob']
+        self.device = config['device']
+        self.gnn_hidden_dropout_prob = config['gnn_hidden_dropout_prob']
+        self.gnn_att_dropout_prob = config['gnn_att_dropout_prob']
+        self.agg_layer = config['agg_layer']
+
+        # define layers and loss
+        self.item_embedding = nn.Embedding(self.n_items, self.embedding_size, padding_idx=0)
+        self.emb_dropout = nn.Dropout(self.dropout_prob)
+        # position embedding
+        self.position_embedding = nn.Embedding(self.max_seq_length+1, self.hidden_size)
+        self.reverse_position_embedding = nn.Embedding(self.max_seq_length + 1, self.hidden_size)
+
+        self.gnn_layers = ConnectedGNN(embedding_size=self.embedding_size ,
+                               n_layers=self.agg_layer,
+                               n_heads=1,
+                               hidden_dropout_prob=self.gnn_hidden_dropout_prob,
+                               att_dropout_prob=self.gnn_att_dropout_prob )
+
+        # GRU
+        self.gru_layers= GRU_weak_order(
             input_size=self.embedding_size + self.embedding_size,
             hidden_size=self.hidden_size,
         ).to(config['device'])
@@ -512,35 +722,21 @@ class GRNN(SequentialRecommender):
         logits = torch.matmul(seq_output, test_item_emb.transpose(0, 1))
         return logits
 
+class GRNN_heur_long(SequentialRecommender):
 
-class GRNN_only_graph(SequentialRecommender):
-    r"""GRU4Rec is a model that incorporate RNN for recommendation.
-
-    Note:
-
-        Regarding the innovation of this article,we can only achieve the data augmentation mentioned
-        in the paper and directly output the embedding of the item,
-        in order that the generation method we used is common to other sequential models.
-    """
 
     def __init__(self, config, item_num):
-        super(GRNN_only_graph, self).__init__(config, item_num)
+        super(GRNN_heur_long, self).__init__(config, item_num)
 
         # load parameters info
         self.embedding_size = config['embedding_size']
-        # self.graph_emb_size = config['graph_emb_size']
-        self.layer_norm_eps = float(config['layer_norm_eps'])
-
         self.hidden_size = config['hidden_size']
         self.step = config['step']
-        self.loss_type = config['loss_type']
         self.num_layers = config['num_layers']
         self.dropout_prob = config['dropout_prob']
         self.device = config['device']
         self.gnn_hidden_dropout_prob = config['gnn_hidden_dropout_prob']
         self.gnn_att_dropout_prob = config['gnn_att_dropout_prob']
-        self.n_layers = config['n_layers']
-        self.n_heads = config['n_heads']
         self.agg_layer = config['agg_layer']
 
         # define layers and loss
@@ -550,156 +746,12 @@ class GRNN_only_graph(SequentialRecommender):
         self.position_embedding = nn.Embedding(self.max_seq_length+1, self.hidden_size)
         self.reverse_position_embedding = nn.Embedding(self.max_seq_length + 1, self.hidden_size)
 
-        self.cg_gnn = ConnectedGNN(embedding_size=self.embedding_size ,
-                               n_layers=self.agg_layer,
-                               n_heads=1,
-                               hidden_dropout_prob=self.gnn_hidden_dropout_prob,
-                               att_dropout_prob=self.gnn_att_dropout_prob )
 
         # GRU
-        self.gru_layers_cg = ModifiedGRU(
-            input_size=self.embedding_size + self.embedding_size,
+        self.gru_layers= GRU_heur_long(
+            input_size=self.embedding_size  ,
             hidden_size=self.hidden_size,
         ).to(config['device'])
-
-        # parameters initialization
-        self.apply(self._init_weights)
-        print('............initializing................')
-
-    def _init_weights(self, module):
-
-
-        if isinstance(module,nn.GRU) or isinstance(module, ModifiedGRU)  :
-
-            for weight in module.parameters():
-                if len(weight.shape) == 2:
-                    nn.init.orthogonal_(weight.data)
-        else:
-            stdv = 1.0 / math.sqrt(self.embedding_size)
-            for weight in self.parameters():
-                weight.data.uniform_(-stdv, stdv)
-
-
-    def get_pos_emb(self,item_seq,item_seq_len):
-        position_ids = torch.arange(item_seq.size(1), dtype=torch.long, device=item_seq.device)
-        position_ids = position_ids.unsqueeze(0).expand_as(item_seq)
-        new_seq_len = item_seq_len.view(-1, 1)
-        reverse_pos_id = new_seq_len - position_ids
-        reverse_pos_id = torch.clamp(reverse_pos_id, 0)
-
-        position_embedding = self.position_embedding(position_ids)
-        reverse_position_embedding = self.reverse_position_embedding(reverse_pos_id)
-        return position_embedding, reverse_position_embedding
-
-    def forward(self, item_seq, adj_in, item_seq_len):
-
-
-        position_embedding,reverse_position_embedding = self.get_pos_emb(item_seq,item_seq_len)
-
-        item_seq_emb = self.item_embedding(item_seq)
-        item_seq_emb_dropout = self.emb_dropout(item_seq_emb)
-
-        """
-        GraphEmb
-        """
-
-        gnn_inputs = item_seq_emb_dropout
-        # adj_graph_seq_emb = self.adj_gnn(item_seq_emb=gnn_inputs,
-        #                          position_emb=position_embedding,
-        #                          adj_mat = adj_in)
-
-        cg_graph_seq_emb = self.cg_gnn(item_seq_emb=gnn_inputs,
-                                 position_emb=position_embedding,
-                                 adj_mat = adj_in)
-
-        gru_inputs_cg = torch.cat((item_seq_emb_dropout,cg_graph_seq_emb ),2)
-        gru_output_cg, _ = self.gru_layers_cg(gru_inputs_cg)
-
-        graph_intent = self.gather_indexes(cg_graph_seq_emb, item_seq_len-1)
-
-        hybrid_preference = graph_intent
-
-
-        return hybrid_preference
-
-    def calculate_logits(self, item_seq, item_seq_len, adj_in ):
-
-
-
-        seq_output = self.forward(item_seq, adj_in,   item_seq_len)
-        # pos_items = interaction[self.POS_ITEM_ID]
-        # # self.loss_type = 'CE'
-        test_item_emb = self.item_embedding.weight
-        logits = torch.matmul(seq_output, test_item_emb.transpose(0, 1))
-        # loss = self.loss_fct(logits, pos_items)
-        return logits
-
-
-
-
-class GRNN_weak_order(SequentialRecommender):
-    r"""GRU4Rec is a model that incorporate RNN for recommendation.
-
-    Note:
-
-        Regarding the innovation of this article,we can only achieve the data augmentation mentioned
-        in the paper and directly output the embedding of the item,
-        in order that the generation method we used is common to other sequential models.
-    """
-
-    def __init__(self, config, item_num):
-        super(GRNN_weak_order, self).__init__(config, item_num)
-
-        # load parameters info
-        self.embedding_size = config['embedding_size']
-        # self.graph_emb_size = config['graph_emb_size']
-
-        self.hidden_size = config['hidden_size']
-        self.step = config['step']
-        self.loss_type = config['loss_type']
-        self.num_layers = config['num_layers']
-        self.dropout_prob = config['dropout_prob']
-        self.device = config['device']
-        self.gnn_hidden_dropout_prob = config['gnn_hidden_dropout_prob']
-        self.gnn_att_dropout_prob = config['gnn_att_dropout_prob']
-        self.n_layers = config['n_layers']
-        self.n_heads = config['n_heads']
-        self.agg_layer = config['agg_layer']
-
-        # define layers and loss
-        self.item_embedding = nn.Embedding(self.n_items, self.embedding_size, padding_idx=0)
-        self.emb_dropout = nn.Dropout(self.dropout_prob)
-        # position embedding
-        self.position_embedding = nn.Embedding(self.max_seq_length+1, self.hidden_size)
-        self.reverse_position_embedding = nn.Embedding(self.max_seq_length + 1, self.hidden_size)
-
-        # GNN
-        # self.adj_gnn = GNN(self.embedding_size, self.embedding_size,self.max_seq_length)
-        # self.adj_gnn = ConnectedGNN(embedding_size=self.embedding_size,
-        #                       n_layers=1,
-        #                       n_heads=1,
-        #                       hidden_dropout_prob=self.gnn_hidden_dropout_prob,
-        #                       att_dropout_prob=self.gnn_att_dropout_prob)
-        self.cg_gnn = ConnectedGNN(embedding_size=self.embedding_size ,
-                               n_layers=self.agg_layer,
-                               n_heads=1,
-                               hidden_dropout_prob=self.gnn_hidden_dropout_prob,
-                               att_dropout_prob=self.gnn_att_dropout_prob )
-
-        # GRU
-        self.gru_layers_cg = GRU_weak_order(
-            input_size=self.embedding_size + self.embedding_size,
-            hidden_size=self.hidden_size,
-        ).to(config['device'])
-
-        self.simple_gru_layers = nn.GRU(
-            input_size=self.embedding_size,
-            hidden_size=self.hidden_size,
-            num_layers=self.num_layers,
-            bias=False,
-            batch_first=True,
-        )
-
 
         self.dense = nn.Linear(self.hidden_size  , self.embedding_size )
         # parameters initialization
@@ -745,18 +797,230 @@ class GRNN_weak_order(SequentialRecommender):
         GraphEmb
         """
 
-        gnn_inputs = item_seq_emb_dropout
+        """
+        GRUEmb
+        """
+        gru_inputs =  item_seq_emb_dropout
+        gru_outputs, _ = self.gru_layers(gru_inputs)
 
-        graph_outputs = self.cg_gnn(item_seq_emb=gnn_inputs,
-                                 position_emb=reverse_position_embedding,
+        gru_outputs = self.dense(gru_outputs)
+
+
+        """
+        READOUT FUNCTION
+        """
+        graph_intent = torch.mean(item_seq_emb_dropout,axis=1)
+        gru_intent = self.gather_indexes(gru_outputs, item_seq_len - 1)
+
+        hybrid_preference =   gru_intent + graph_intent
+
+        return hybrid_preference
+
+    def calculate_logits(self, item_seq, item_seq_len, adj_in ):
+
+
+        seq_output = self.forward(item_seq, adj_in,   item_seq_len)
+        test_item_emb = self.item_embedding.weight
+        logits = torch.matmul(seq_output, test_item_emb.transpose(0, 1))
+        return logits
+
+
+class GRNN_no_order(SequentialRecommender):
+
+
+    def __init__(self, config, item_num):
+        super(GRNN_no_order, self).__init__(config, item_num)
+
+        # load parameters info
+        self.embedding_size = config['embedding_size']
+        self.hidden_size = config['hidden_size']
+        self.step = config['step']
+        self.num_layers = config['num_layers']
+        self.dropout_prob = config['dropout_prob']
+        self.device = config['device']
+        self.gnn_hidden_dropout_prob = config['gnn_hidden_dropout_prob']
+        self.gnn_att_dropout_prob = config['gnn_att_dropout_prob']
+        self.agg_layer = config['agg_layer']
+
+        # define layers and loss
+        self.item_embedding = nn.Embedding(self.n_items, self.embedding_size, padding_idx=0)
+        self.emb_dropout = nn.Dropout(self.dropout_prob)
+        # position embedding
+        self.position_embedding = nn.Embedding(self.max_seq_length+1, self.hidden_size)
+        self.reverse_position_embedding = nn.Embedding(self.max_seq_length + 1, self.hidden_size)
+
+        self.gnn_layers = ConnectedGNN(embedding_size=self.embedding_size ,
+                               n_layers=self.agg_layer,
+                               n_heads=1,
+                               hidden_dropout_prob=self.gnn_hidden_dropout_prob,
+                               att_dropout_prob=self.gnn_att_dropout_prob )
+
+        # GRU
+        self.gru_layers= ModifiedGRU(
+            input_size=self.embedding_size + self.embedding_size,
+            hidden_size=self.hidden_size,
+        ).to(config['device'])
+
+        self.output_layer = nn.Linear(self.embedding_size*2 , self.embedding_size )
+        # parameters initialization
+        self.apply(self._init_weights)
+        print('............initializing................')
+
+
+
+    def _init_weights(self, module):
+
+
+        if isinstance(module,nn.GRU) or isinstance(module, ModifiedGRU)  :
+
+            for weight in module.parameters():
+                if len(weight.shape) == 2:
+                    nn.init.orthogonal_(weight.data)
+        else:
+            stdv = 1.0 / math.sqrt(self.embedding_size)
+            for weight in self.parameters():
+                weight.data.uniform_(-stdv, stdv)
+
+
+    def get_pos_emb(self,item_seq,item_seq_len):
+        position_ids = torch.arange(item_seq.size(1), dtype=torch.long, device=item_seq.device)
+        position_ids = position_ids.unsqueeze(0).expand_as(item_seq)
+        new_seq_len = item_seq_len.view(-1, 1)
+        reverse_pos_id = new_seq_len - position_ids
+        reverse_pos_id = torch.clamp(reverse_pos_id, 0)
+
+        position_embedding = self.position_embedding(position_ids)
+        reverse_position_embedding = self.reverse_position_embedding(reverse_pos_id)
+        return position_embedding, reverse_position_embedding
+
+    def forward(self, item_seq, adj_in, item_seq_len):
+
+
+        position_embedding,reverse_position_embedding = self.get_pos_emb(item_seq,item_seq_len)
+
+        item_seq_emb = self.item_embedding(item_seq)
+        item_seq_emb_dropout = self.emb_dropout(item_seq_emb)
+
+
+        """
+        GraphEmb
+        """
+        gnn_inputs = item_seq_emb_dropout
+        graph_outputs = self.gnn_layers(item_seq_emb=gnn_inputs,
+                                 position_emb=position_embedding,
+                                 adj_mat = adj_in)
+
+
+        """
+        READOUT FUNCTION
+        """
+
+        outputs = self.output_layer(torch.cat((item_seq_emb_dropout,graph_outputs),axis=2))
+
+        hybrid_preference =   self.gather_indexes(outputs, item_seq_len - 1)
+
+
+        return hybrid_preference
+
+    def calculate_logits(self, item_seq, item_seq_len, adj_in ):
+
+
+        seq_output = self.forward(item_seq, adj_in,   item_seq_len)
+        test_item_emb = self.item_embedding.weight
+        logits = torch.matmul(seq_output, test_item_emb.transpose(0, 1))
+        return logits
+
+
+class GRNN_gru(SequentialRecommender):
+
+
+    def __init__(self, config, item_num):
+        super(GRNN_gru, self).__init__(config, item_num)
+
+        # load parameters info
+        self.embedding_size = config['embedding_size']
+        self.hidden_size = config['hidden_size']
+        self.step = config['step']
+        self.num_layers = config['num_layers']
+        self.dropout_prob = config['dropout_prob']
+        self.device = config['device']
+        self.gnn_hidden_dropout_prob = config['gnn_hidden_dropout_prob']
+        self.gnn_att_dropout_prob = config['gnn_att_dropout_prob']
+        self.agg_layer = config['agg_layer']
+
+        # define layers and loss
+        self.item_embedding = nn.Embedding(self.n_items, self.embedding_size, padding_idx=0)
+        self.emb_dropout = nn.Dropout(self.dropout_prob)
+        # position embedding
+        self.position_embedding = nn.Embedding(self.max_seq_length+1, self.hidden_size)
+        self.reverse_position_embedding = nn.Embedding(self.max_seq_length + 1, self.hidden_size)
+
+        self.gnn_layers = ConnectedGNN(embedding_size=self.embedding_size ,
+                               n_layers=self.agg_layer,
+                               n_heads=1,
+                               hidden_dropout_prob=self.gnn_hidden_dropout_prob,
+                               att_dropout_prob=self.gnn_att_dropout_prob )
+
+        # GRU
+        self.gru_layers = nn.GRU(
+            input_size=self.embedding_size,
+            hidden_size=self.hidden_size,
+        )
+
+        self.dense = nn.Linear(self.hidden_size  , self.embedding_size )
+        # parameters initialization
+        self.apply(self._init_weights)
+        print('............initializing................')
+
+
+
+    def _init_weights(self, module):
+
+
+        if isinstance(module,nn.GRU) or isinstance(module, ModifiedGRU)  :
+
+            for weight in module.parameters():
+                if len(weight.shape) == 2:
+                    nn.init.orthogonal_(weight.data)
+        else:
+            stdv = 1.0 / math.sqrt(self.embedding_size)
+            for weight in self.parameters():
+                weight.data.uniform_(-stdv, stdv)
+
+
+    def get_pos_emb(self,item_seq,item_seq_len):
+        position_ids = torch.arange(item_seq.size(1), dtype=torch.long, device=item_seq.device)
+        position_ids = position_ids.unsqueeze(0).expand_as(item_seq)
+        new_seq_len = item_seq_len.view(-1, 1)
+        reverse_pos_id = new_seq_len - position_ids
+        reverse_pos_id = torch.clamp(reverse_pos_id, 0)
+
+        position_embedding = self.position_embedding(position_ids)
+        reverse_position_embedding = self.reverse_position_embedding(reverse_pos_id)
+        return position_embedding, reverse_position_embedding
+
+    def forward(self, item_seq, adj_in, item_seq_len):
+
+
+        position_embedding,reverse_position_embedding = self.get_pos_emb(item_seq,item_seq_len)
+
+        item_seq_emb = self.item_embedding(item_seq)
+        item_seq_emb_dropout = self.emb_dropout(item_seq_emb)
+
+        """
+        GraphEmb
+        """
+        gnn_inputs = item_seq_emb_dropout
+        graph_outputs = self.gnn_layers(item_seq_emb=gnn_inputs,
+                                 position_emb= position_embedding,
                                  adj_mat = adj_in)
         """
         GRUEmb
         """
-        gru_inputs  = torch.cat((item_seq_emb_dropout,graph_outputs ),2)
-        gru_outputs , _ = self.gru_layers_cg(gru_inputs )
-        gru_outputs  = self.dense(gru_outputs)
+        gru_inputs = graph_outputs+item_seq_emb_dropout
+        gru_outputs, _ = self.gru_layers(gru_inputs)
 
+        gru_outputs = self.dense(gru_outputs)
 
 
         """
@@ -765,7 +1029,7 @@ class GRNN_weak_order(SequentialRecommender):
         gru_intent = self.gather_indexes(gru_outputs, item_seq_len - 1)
         graph_intent = self.gather_indexes(graph_outputs, item_seq_len - 1)
 
-        hybrid_preference =  gru_intent + graph_intent
+        hybrid_preference =   gru_intent+graph_intent
 
 
         return hybrid_preference
@@ -773,15 +1037,10 @@ class GRNN_weak_order(SequentialRecommender):
     def calculate_logits(self, item_seq, item_seq_len, adj_in ):
 
 
-
         seq_output = self.forward(item_seq, adj_in,   item_seq_len)
-        # pos_items = interaction[self.POS_ITEM_ID]
-        # # self.loss_type = 'CE'
         test_item_emb = self.item_embedding.weight
         logits = torch.matmul(seq_output, test_item_emb.transpose(0, 1))
-        # loss = self.loss_fct(logits, pos_items)
         return logits
-
 
 
 class ModifiedGRU(nn.Module):
@@ -840,3 +1099,30 @@ class GRU_weak_order(nn.Module):
         return torch.stack(outputs,1), state
 
 
+class GRU_heur_long(nn.Module):
+
+    def __init__(self,input_size, hidden_size):
+
+        super(GRU_heur_long,self).__init__()
+
+        self.cell = ModifiedGRUCell(input_size, hidden_size)
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+
+    def forward(self,x,h=None):
+
+        batch_size, length = x.size(0), x.size(1)
+
+        outputs = []
+
+        if h is None:
+            h = torch.zeros(batch_size, self.hidden_size,device = x.device )
+        state = h
+        for l in range(length):
+            neighbors = torch.mean(x[:,:l+1,:],axis=1)
+
+            inputs = torch.cat((x[:,l,:],neighbors),axis=1)
+            output, state = self.cell(inputs,state)
+
+            outputs.append(output)
+        return torch.stack(outputs,1), state

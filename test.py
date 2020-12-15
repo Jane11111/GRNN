@@ -3,10 +3,7 @@
 # @Author  : zxl
 # @FileName: test.py
 
-import torch
-import numpy as np
-import time
-from utils.data.preprocess import PrepareData
+from prepare_data.preprocess import PrepareData
 from logging import getLogger
 import time
 

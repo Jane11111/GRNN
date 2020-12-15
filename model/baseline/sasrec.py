@@ -63,9 +63,19 @@ class SASRec(SequentialRecommender):
 
         # parameters initialization
         self.apply(self._init_weights)
+        print('............different initializing................')
+
 
     def _init_weights(self, module):
         """ Initialize the weights """
+        # TODO modified
+        # if isinstance(module, nn.Embedding):
+        #     xavier_normal_(module.weight)
+
+
+        """
+        ----------
+        """
         # if isinstance(module, (nn.Linear, nn.Embedding)):
         #     # Slightly different from the TF version which uses truncated_normal for initialization
         #     # cf https://github.com/pytorch/pytorch/pull/5617
@@ -76,17 +86,15 @@ class SASRec(SequentialRecommender):
         # if isinstance(module, nn.Linear) and module.bias is not None:
         #
         #     module.bias.data.zero_()
-        # for weight in self.parameters():
-        #     weight.data.uniform_(0, 1)
-        if isinstance(module, nn.Embedding):
-            xavier_normal_(module.weight)
+        for weight in self.parameters():
+            weight.data.uniform_(0, 0.3)
+
         # elif isinstance(module, nn.Linear) and module.bias is not None:
         #
         #     module.bias.data.zero_()
         # stdv = 1.0 / math.sqrt(self.hidden_size)
         # for weight in self.parameters():
         #     weight.data.uniform_(-0.1, 0.1)
-        print('............initializing................')
 
     def get_attention_mask(self, item_seq):
         """Generate left-to-right uni-directional attention mask for multi-head attention."""

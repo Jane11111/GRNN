@@ -3,19 +3,15 @@
 # @Author  : zxl
 # @FileName: main.py
 
-import argparse
 
-
-from pathlib import Path
 import torch as th
 from torch.utils.data import DataLoader
-from utils.data.preprocess import PrepareData
-from utils.data.dataset import PaddedDataset,PaddedDatasetNormal
-from utils.data.collate import collate_fn,collate_fn_normal
+from prepare_data.preprocess import PrepareData
+from prepare_data.dataset import PaddedDataset
+from prepare_data.collate import collate_fn
 from utils.trainer import TrainRunner
-from model.grnn import GRNN ,GRNN_only_graph, GRNN_weak_order
-from model.grnn_v1 import GRNN_v1
-from model.baseline.gru4rec import GRU4Rec
+from model.grnn import GRNN ,GRNN_only_graph, \
+    GRNN_weak_order, GRNN_heur_long,GRNN_no_order,GRNN_gru
 # from config.configurator import Config
 import yaml
 import logging
@@ -100,9 +96,9 @@ def load_hyper_param(config ):
 
 if __name__ == "__main__":
 
-    model = 'GRNN'
-    dataset = 'tmall_buy'
-    gpu_id = 0
+    model = 'GRNN_heur_long'
+    dataset = 'movielen'
+    gpu_id = 2
     epochs = 300
     train_batch_size = 512
 
@@ -115,7 +111,7 @@ if __name__ == "__main__":
               'device': 'cuda:' + str(gpu_id)}
 
 
-    config_path = './data/config/model/'+model+'/config.yaml'
+    config_path = './data/config/'+model+'.yaml'
     with open(config_path, 'r') as f:
         dict = yaml.load(f.read(),Loader=yaml.FullLoader)
 
@@ -164,12 +160,16 @@ if __name__ == "__main__":
 
         if config['model'] == 'GRNN':
             model_obj = GRNN(config, num_items)
-
         elif config['model'] == 'GRNN_only_graph':
             model_obj = GRNN_only_graph(config,num_items)
         elif config['model'] == 'GRNN_weak_order':
             model_obj = GRNN_weak_order(config, num_items)
-
+        elif config['model'] == 'GRNN_heur_long':
+            model_obj = GRNN_heur_long(config, num_items)
+        elif config['model'] == 'GRNN_no_order':
+            model_obj = GRNN_no_order(config, num_items)
+        elif config['model'] == 'GRNN_gru':
+            model_obj = GRNN_gru(config, num_items)
         device = config['device']
         model_obj = model_obj.to(device)
 

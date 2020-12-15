@@ -3,20 +3,16 @@
 # @Author  : zxl
 # @FileName: main.py
 
-import argparse
 import warnings
 
 warnings.filterwarnings('ignore')
 
-
-from pathlib import Path
 import torch as th
 from torch.utils.data import DataLoader
-from utils.data.preprocess import PrepareData
-from utils.data.dataset import PaddedDatasetNormal
-from utils.data.collate import collate_fn_normal
+from prepare_data.preprocess import PrepareData
+from prepare_data.dataset import PaddedDatasetNormal
+from prepare_data.collate import collate_fn_normal
 from utils.trainer import TrainRunnerNormal
-from model.grnn import GRNN
 from model.baseline.gru4rec import GRU4Rec
 from model.baseline.narm import NARM
 from model.baseline.sasrec import SASRec
@@ -117,11 +113,11 @@ def load_hyper_param( config,model):
             cur_config['learning_rate'] = learning_rate
             res.append(cur_config)
     elif model == 'SASRec':
-        for learning_rate in learning_rate_lst:
-            for n_layers in n_layers_lst:
-                for n_heads in n_heads_lst:
-                    for hidden_dropout_prob in dropout_prob_lst:
-                        for attn_dropout_prob in dropout_prob_lst:
+        for learning_rate in [0.001,0.005,0.0001, 0.0005]:
+            for n_layers in [1,2,3]:
+                for n_heads in [1,2 ]:
+                    for hidden_dropout_prob in [0,0.25 ]:
+                        for attn_dropout_prob in [0,0.25 ]:
                             cur_config = config.copy()
                             cur_config['learning_rate'] = learning_rate
                             cur_config['n_layers'] = n_layers
@@ -174,9 +170,9 @@ def load_hyper_param( config,model):
 
 if __name__ == "__main__":
 
-    model = 'GCSAN'
-    dataset = 'tmall_buy'
-    gpu_id = 1
+    model = 'SASRec'
+    dataset = 'elec'
+    gpu_id = 2
     epochs = 300
     train_batch_size = 512
 
