@@ -86,8 +86,6 @@ class SASRec(SequentialRecommender):
         # if isinstance(module, nn.Linear) and module.bias is not None:
         #
         #     module.bias.data.zero_()
-        for weight in self.parameters():
-            weight.data.uniform_(0, 0.3)
 
         # elif isinstance(module, nn.Linear) and module.bias is not None:
         #
@@ -95,17 +93,25 @@ class SASRec(SequentialRecommender):
         # stdv = 1.0 / math.sqrt(self.hidden_size)
         # for weight in self.parameters():
         #     weight.data.uniform_(-0.1, 0.1)
+        # v3
+        # for weight in self.parameters():
+        #     weight.data.uniform_(0, 0.3)
+        # v4
+        for weight in self.parameters():
 
+            range= 0.50
+            weight.data.uniform_(-range, range)
     def get_attention_mask(self, item_seq):
         """Generate left-to-right uni-directional attention mask for multi-head attention."""
         attention_mask = (item_seq > 0).long()
-        extended_attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)  # torch.int64
-        # mask for left-to-right unidirectional
+        extended_attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)  # torch.int64 512，1，1，50
+        # mask for the whole sequence
         max_len = attention_mask.size(-1)
         attn_shape = (1, max_len, max_len)
-        subsequent_mask = torch.triu(torch.ones(attn_shape), diagonal=1)  # torch.uint8
-        subsequent_mask = (subsequent_mask == 0).unsqueeze(1)
-        subsequent_mask = subsequent_mask.long().to(item_seq.device)
+        # subsequent_mask = torch.triu(torch.ones(attn_shape), diagonal=1)  # torch.uint8
+        # subsequent_mask = (subsequent_mask == 0).unsqueeze(1)
+        # subsequent_mask = subsequent_mask.long().to(item_seq.device) # 1，1，50，50
+        subsequent_mask = torch.ones(attn_shape).unsqueeze(0).to(item_seq.device)
 
         extended_attention_mask = extended_attention_mask * subsequent_mask
         extended_attention_mask = extended_attention_mask.to(dtype=next(self.parameters()).dtype)  # fp16 compatibility

@@ -100,7 +100,7 @@ if __name__ == "__main__":
 
     th.cuda.set_device(th.device(config['device']))
 
-    config_path = './data/config/model/'+model+'/config.yaml'
+    config_path = './config/'+model+'.yaml'
     with open(config_path, 'r') as f:
         dict = yaml.load(f.read(),Loader=yaml.FullLoader)
 

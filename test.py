@@ -7,7 +7,7 @@ from prepare_data.preprocess import PrepareData
 from logging import getLogger
 import time
 
-for dataset in ['tmall_buy', 'music','movie_tv','elec','order','movielen' ]:
+for dataset in ['phone' ]:
 
     config= {'dataset':dataset}
     cur_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())

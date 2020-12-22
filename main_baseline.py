@@ -86,8 +86,8 @@ def load_hyper_param( config,model):
     n_heads_lst = [1,2]
     dropout_prob_lst = [0,0.25,0.5]
     narm_dropout_probs = [[0,0],[0,0.25],[0,0.5],[0.25,0.25],
-                          [0.25,0.5],[0.5,0.5], [0.25, 0],
-                          [0.5, 0], [0.5, 0.25]]
+                          [0.25,0.5],[0.5,0.5],[0.25,0.0],
+                          [0.5,0.25],[0.25,0]]
     # narm_dropout_probs = [[0.25,0],[0.5,0],[0.5,0.25]]
     block_lst = [1,3,5]
 
@@ -113,9 +113,9 @@ def load_hyper_param( config,model):
             cur_config['learning_rate'] = learning_rate
             res.append(cur_config)
     elif model == 'SASRec':
-        for learning_rate in [0.001,0.005,0.0001, 0.0005]:
-            for n_layers in [1,2,3]:
-                for n_heads in [1,2 ]:
+        for learning_rate in [0.001, 0.0005]:
+            for n_layers in [2,3]:
+                for n_heads in [1 ]:
                     for hidden_dropout_prob in [0,0.25 ]:
                         for attn_dropout_prob in [0,0.25 ]:
                             cur_config = config.copy()
@@ -171,7 +171,7 @@ def load_hyper_param( config,model):
 if __name__ == "__main__":
 
     model = 'SASRec'
-    dataset = 'elec'
+    dataset = 'tmall_buy'
     gpu_id = 2
     epochs = 300
     train_batch_size = 512
@@ -185,7 +185,7 @@ if __name__ == "__main__":
               'device': 'cuda:'+str(gpu_id) }
 
 
-    config_path = './data/config/model/'+model+'/config.yaml'
+    config_path = './config/'+model+'.yaml'
     with open(config_path, 'r') as f:
         dict = yaml.load(f.read(),Loader=yaml.FullLoader)
 
@@ -223,8 +223,12 @@ if __name__ == "__main__":
     best_config = config.copy()
 
     config_lst = load_hyper_param(config.copy(),model)
+    hyper_count = len(config_lst)
+    logger.info('[hyper parameter count]: %d' % (hyper_count))
+    hyper_number = 0
 
     for config in config_lst:
+        hyper_number += 1
 
 
         logger.info(' start training, running parameters:')
@@ -290,6 +294,8 @@ if __name__ == "__main__":
         logger.info(
             '[score]: founded best [hit@10: %.5f, ndcg@10: %.5f], current [hit@10: %.5f, ndcg@10: %.5f]'
             % (founded_best_hit_10, founded_best_ndcg_10, best_hr_10, best_ndcg_10))
+        logger.info('[hyper number]: %d/%d'%(hyper_number,hyper_count))
+
         logger.info('<founded best test> hit@5: %.5f, ndcg@5: %.5f, mrr@5: %.5f,'
                     'hit@10: %.5f, ndcg@10: %.5f, mrr@10: %.5f,'
                     'hit@20: %.5f, ndcg@20: %.5f, mrr@20: %.5f'

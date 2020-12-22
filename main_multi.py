@@ -10,9 +10,7 @@ from prepare_data.preprocess import PrepareData
 from prepare_data.dataset import PaddedDataset
 from prepare_data.collate import collate_fn
 from utils.trainer import TrainRunner
-from model.grnn import GRNN ,GRNN_only_graph, \
-    GRNN_weak_order, GRNN_heur_long,GRNN_no_order,\
-    GRNN_gru,GRNN_gru_pro
+from model.grnn import  MultiLayerGRNN
 # from config.configurator import Config
 import yaml
 import logging
@@ -76,30 +74,33 @@ def load_hyper_param(config ):
 
 
     res = []
-    for dropout_prob in [0,0.25   ]:
+    for lr in [0.005, 0.001, 0.0005]:
+
         for gnn_hidden_dropout_prob in [0 ]:
             for gnn_att_dropout_prob in [0 ]:
                 for agg_layer in [1,2,3]:
                     for embedding_size in [128 ]:
                         for hidden_size in [128  ]:
-                            for lr in [0.005, 0.001, 0.0005]:
-                                cur_config = config.copy()
-                                cur_config['hidden_size'] = hidden_size
-                                cur_config['embedding_size'] = embedding_size
-                                cur_config['gnn_hidden_dropout_prob'] = gnn_hidden_dropout_prob
-                                cur_config['gnn_att_dropout_prob'] = gnn_att_dropout_prob
-                                cur_config['learning_rate'] = lr
-                                cur_config['dropout_prob'] = dropout_prob
-                                cur_config['agg_layer'] = agg_layer
-                                res.append(cur_config)
+                            for dropout_prob in [0, 0.25]:
+                                for step in [2,3,4]:
+                                    cur_config = config.copy()
+                                    cur_config['hidden_size'] = hidden_size
+                                    cur_config['embedding_size'] = embedding_size
+                                    cur_config['gnn_hidden_dropout_prob'] = gnn_hidden_dropout_prob
+                                    cur_config['gnn_att_dropout_prob'] = gnn_att_dropout_prob
+                                    cur_config['learning_rate'] = lr
+                                    cur_config['dropout_prob'] = dropout_prob
+                                    cur_config['agg_layer'] = agg_layer
+                                    cur_config['step'] = step
+                                    res.append(cur_config)
     return res
 
 
 if __name__ == "__main__":
 
-    model = 'GRNN_only_graph'
-    dataset = 'phone'
-    gpu_id = 2
+    model = 'MultiLayerGRNN'
+    dataset = 'tmall_buy'
+    gpu_id = 0
     epochs = 300
     train_batch_size = 512
 
@@ -163,20 +164,9 @@ if __name__ == "__main__":
         logger.info(' start training, running parameters:')
         logger.info(config)
 
-        if config['model'] == 'GRNN':
-            model_obj = GRNN(config, num_items)
-        elif config['model'] == 'GRNN_only_graph':
-            model_obj = GRNN_only_graph(config,num_items)
-        elif config['model'] == 'GRNN_weak_order':
-            model_obj = GRNN_weak_order(config, num_items)
-        elif config['model'] == 'GRNN_heur_long':
-            model_obj = GRNN_heur_long(config, num_items)
-        elif config['model'] == 'GRNN_no_order':
-            model_obj = GRNN_no_order(config, num_items)
-        elif config['model'] == 'GRNN_gru':
-            model_obj = GRNN_gru(config, num_items)
-        elif config['model'] == 'GRNN_gru_pro':
-            model_obj = GRNN_gru_pro(config,num_items)
+        if config['model'] == 'MultiLayerGRNN':
+            model_obj = MultiLayerGRNN(config, num_items)
+
         device = config['device']
         model_obj = model_obj.to(device)
 

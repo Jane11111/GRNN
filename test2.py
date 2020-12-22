@@ -6,12 +6,12 @@
 import numpy as np
 import torch
 
-batch_size = 2
-max_len = 3
-emb_size = 4
+p_lst = [0.9,0.09,0.01]
 
+res = 0
 
+for idx in range(len(p_lst)):
+    p = p_lst[idx]
+    res -= p*np.log (p )
 
-a = torch.tensor(np.ones((batch_size,max_len,emb_size)))
-b = torch.mean(a[:,:2,:],axis=1)
-print(b)
+print(res)
