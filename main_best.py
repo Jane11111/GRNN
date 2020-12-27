@@ -3,6 +3,7 @@
 # @Author  : zxl
 # @FileName: main.py
 
+import json
 
 import torch as th
 from torch.utils.data import DataLoader
@@ -82,7 +83,7 @@ def load_hyper_param(config ):
                 for agg_layer in [1,2,3]:
                     for embedding_size in [128 ]:
                         for hidden_size in [128  ]:
-                            for lr in [0.005, 0.001, 0.0005]:
+                            for lr in [0.005,0.001,  0.0005]:
                                 cur_config = config.copy()
                                 cur_config['hidden_size'] = hidden_size
                                 cur_config['embedding_size'] = embedding_size
@@ -94,10 +95,9 @@ def load_hyper_param(config ):
                                 res.append(cur_config)
     return res
 
-
 if __name__ == "__main__":
 
-    model = 'GRNN_weak_order'
+    model = 'GRNN'
     dataset = 'home'
     gpu_id = 2
     epochs = 300
@@ -115,6 +115,9 @@ if __name__ == "__main__":
     config_path = './config/'+model+'.yaml'
     with open(config_path, 'r') as f:
         dict = yaml.load(f.read(),Loader=yaml.FullLoader)
+
+
+
     for key in dict:
         config[key] = dict[key]
 
@@ -144,7 +147,7 @@ if __name__ == "__main__":
 
     # TODO 是不是可以从这里循环调参数
     best_config = config.copy()
-    config_lst = load_hyper_param(config)
+    config_lst = load_hyper_param(config )
 
     prepare_data_model = PrepareData(config, logger)
     num_items, train_loader, test_loader, dev_loader = load_data(prepare_data_model)
@@ -152,6 +155,10 @@ if __name__ == "__main__":
     hyper_count = len(config_lst)
     logger.info('[hyper parameter count]: %d'%(hyper_count))
     hyper_number = 0
+
+    best_model_dict = None
+
+
 
     for config in config_lst:
         hyper_number += 1
@@ -162,18 +169,7 @@ if __name__ == "__main__":
 
         if config['model'] == 'GRNN':
             model_obj = GRNN(config, num_items)
-        elif config['model'] == 'GRNN_only_graph':
-            model_obj = GRNN_only_graph(config,num_items)
-        elif config['model'] == 'GRNN_weak_order':
-            model_obj = GRNN_weak_order(config, num_items)
-        elif config['model'] == 'GRNN_heur_long':
-            model_obj = GRNN_heur_long(config, num_items)
-        elif config['model'] == 'GRNN_no_order':
-            model_obj = GRNN_no_order(config, num_items)
-        elif config['model'] == 'GRNN_gru':
-            model_obj = GRNN_gru(config, num_items)
-        elif config['model'] == 'GRNN_gru_pro':
-            model_obj = GRNN_gru_pro(config,num_items)
+
         device = config['device']
         model_obj = model_obj.to(device)
 
@@ -198,6 +194,8 @@ if __name__ == "__main__":
             founded_best_hit_10 = best_hr_10
             founded_best_ndcg_10 = best_ndcg_10
             best_config = config.copy()
+            best_model_dict = runner.get_best_model()
+
             logger.info('------------founded a better result--------------')
 
             founded_best_test_hit_5, founded_best_test_ndcg_5, founded_best_test_mrr_5, \
@@ -222,3 +220,59 @@ if __name__ == "__main__":
                        founded_best_test_hit_10, founded_best_test_ndcg_10, founded_best_test_mrr_10,
                        founded_best_test_hit_20, founded_best_test_ndcg_20, founded_best_test_mrr_20))
         logger.info('=================finished current search======================')
+    def save_load_best_model():
+
+
+        model_save_path = 'data/model/'+model+'_'+dataset+'_'+str(cur_time)+'.pkl'
+        best_result_save_path = 'data/best_result/'+model+'_'+dataset+'_'+str(cur_time)+'.txt'
+
+        # best_model = runner.model
+
+        th.save(best_model_dict, model_save_path)
+        loaded_model_dict = th.load(model_save_path)
+
+        best_model = model_obj
+        best_model.load_state_dict(loaded_model_dict)
+
+        runner = TrainRunner(
+            best_model, #最好的model
+            train_loader,
+            test_loader,
+            dev_loader,
+            device=device,
+            lr=config['learning_rate'],
+            weight_decay=0,
+            logger=logger,
+        )
+
+        test_hit_5, test_ndcg_5, test_mrr_5, \
+        test_hit_10, test_ndcg_10, test_mrr_10, \
+        test_hit_20, test_ndcg_20, test_mrr_20 = \
+            runner.evaluate(best_model, runner.test_loader, runner.device)
+        logger.info('<loaded best test> hit@5: %.5f, ndcg@5: %.5f, mrr@5: %.5f,'
+                    'hit@10: %.5f, ndcg@10: %.5f, mrr@10: %.5f,'
+                    'hit@20: %.5f, ndcg@20: %.5f, mrr@20: %.5f'
+                    % (test_hit_5, test_ndcg_5, test_mrr_5,
+                       test_hit_10, test_ndcg_10, test_mrr_10,
+                       test_hit_20, test_ndcg_20, test_mrr_20))
+
+        top1_lst = runner.get_top1(best_model)
+        print(top1_lst)
+
+        with open(best_result_save_path,'w') as w:
+            w.write(str(top1_lst))
+            w.write('\n')
+            w.write(json.dumps(best_config,indent=4))
+            w.write('\n')
+            w.write('<loaded best test> hit@5: %.5f, ndcg@5: %.5f, mrr@5: %.5f,'
+                        'hit@10: %.5f, ndcg@10: %.5f, mrr@10: %.5f,'
+                        'hit@20: %.5f, ndcg@20: %.5f, mrr@20: %.5f'
+                        % (test_hit_5, test_ndcg_5, test_mrr_5,
+                           test_hit_10, test_ndcg_10, test_mrr_10,
+                           test_hit_20, test_ndcg_20, test_mrr_20))
+        # save model
+    save_load_best_model()
+
+
+
+

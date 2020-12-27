@@ -261,18 +261,20 @@ class MultiLayerGRNN(SequentialRecommender):
         **********************FINAL MODEL(Multiple Layer)***********************
         """
         gnn_inputs = item_seq_emb_dropout
+        gru_inputs_part = item_seq_emb_dropout
         for s in range(self.step):
             # GraphEmb
             graph_outputs = self.gnn_layers(item_seq_emb=gnn_inputs,
                                      position_emb= position_embedding,
                                      adj_mat = adj_in)
             # GruEmb
-            gru_inputs = torch.cat((gnn_inputs,graph_outputs ),2)# TODO
+            gru_inputs = torch.cat((gru_inputs_part,graph_outputs ),2)# TODO
             gru_outputs, _ = self.gru_layers(gru_inputs)
 
             gru_outputs = self.dense(gru_outputs)
 
-            gnn_inputs = gru_outputs + item_seq_emb_dropout
+            gnn_inputs = gru_outputs + position_embedding
+            gru_inputs_part = item_seq_emb_dropout
 
 
         """

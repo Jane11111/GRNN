@@ -282,8 +282,8 @@ class PrepareData():
         test_limit = 20000
         dev_limit = 20000
         # train_limit = 2000
-        # test_limit = 200
-        # dev_limit = 200
+        # test_limit = 2000
+        # dev_limit = 2000
 
         self.train_set  = self.load_dataset(self.train_path,train_limit)
         self.test_set = self.load_dataset(self.test_path, test_limit)
@@ -298,7 +298,7 @@ class PrepareData():
         train_limit = 10000000
         test_limit = 20000
         dev_limit = 20000
-        # train_limit = 2000
+        # train_limit = 20000
         # test_limit = 200
         # dev_limit = 200
 

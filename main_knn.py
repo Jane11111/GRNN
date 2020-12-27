@@ -2,7 +2,7 @@ import pickle
 import numpy as np
 from model.baseline.SKNN import SKNN
 from model.baseline.STAN import STAN
-
+from model.baseline.VSKNN import VSKNN
 import math
 import time
 
@@ -50,7 +50,7 @@ def read_train_test_data(data_name):
 
     return train_id,train_session, train_timestamp,train_predict,test_id,test_session, test_timestamp, test_predict
 
-dataname = 'phone'
+dataname = 'home'
 
 train_id,train_session, train_timestamp,train_predict,\
 test_id,test_session, test_timestamp, test_predict = read_train_test_data(dataname)
