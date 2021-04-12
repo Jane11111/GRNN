@@ -50,6 +50,7 @@ def load_data(prepare_data_model):
     train_sessions, test_sessions, dev_sessions = prepare_data_model.read_train_dev_test_normal()
     prepare_data_model.get_statistics()
     num_items = prepare_data_model.get_item_num()
+
     train_set = PaddedDatasetNormal(train_sessions, max_len)
     test_set = PaddedDatasetNormal(test_sessions, max_len)
     dev_set = PaddedDatasetNormal(dev_sessions, max_len)
@@ -58,7 +59,6 @@ def load_data(prepare_data_model):
         batch_size=config['train_batch_size'],
         shuffle=True,
         drop_last=False,
-        num_workers=4,
         collate_fn=collate_fn_normal,
     )
 
@@ -66,7 +66,6 @@ def load_data(prepare_data_model):
         test_set,
         batch_size=config['train_batch_size'],
         shuffle=False,
-        num_workers=4,
         collate_fn=collate_fn_normal,
     )
 
@@ -74,32 +73,36 @@ def load_data(prepare_data_model):
         dev_set,
         batch_size=config['train_batch_size'],
         shuffle=False,
-        num_workers=4,
         collate_fn=collate_fn_normal,
     )
 
     return num_items, train_loader, test_loader, dev_loader
-def load_hyper_param( config,model):
-    learning_rate_lst = [0.001,0.005, 0.0005]
-    step_lst = [1,2,3,4]
-    n_layers_lst = [2,3]
-    n_heads_lst = [1,2]
-    dropout_prob_lst = [0,0.25,0.5]
-    narm_dropout_probs = [[0,0],[0,0.25],[0,0.5],[0.25,0.25],
-                          [0.25,0.5],[0.5,0.5],[0.25,0.0],
-                          [0.5,0.25],[0.25,0]]
+
+
+def load_hyper_param(config, model,data_name=None):
+    learning_rate_lst = [0.001, 0.005, 0.0005]
+    step_lst = [1, 2, 3, 4]
+    n_layers_lst = [2, 3]
+    n_heads_lst = [1, 2]
+    dropout_prob_lst = [0, 0.25, 0.5]
+    narm_dropout_probs = [[0, 0], [0, 0.25], [0, 0.5], [0.25, 0.25],
+                          [0.25, 0.5], [0.5, 0.5] ]
     # narm_dropout_probs = [[0.25,0],[0.5,0],[0.5,0.25]]
-    block_lst = [1,3,5]
+    block_lst = [1, 3, 5]
 
     res = []
 
     if model == 'GRU4Rec':
-        for learning_rate in learning_rate_lst:
-            for dropout_prob in dropout_prob_lst:
-                cur_config = config.copy()
-                cur_config['learning_rate'] = learning_rate
-                cur_config['dropout_prob'] = dropout_prob
-                res.append(cur_config)
+        # for learning_rate in learning_rate_lst:
+        #     for dropout_prob in dropout_prob_lst:
+        #         cur_config = config.copy()
+        #         cur_config['learning_rate'] = learning_rate
+        #         cur_config['dropout_prob'] = dropout_prob
+        #         res.append(cur_config)
+        cur_config = config.copy()
+        cur_config['learning_rate'] = 0.005
+        cur_config['dropout_prob'] = 0.25
+        res.append(cur_config)
     elif model == 'NARM':
         for learning_rate in learning_rate_lst:
             for dropout_probs in narm_dropout_probs:
@@ -107,17 +110,19 @@ def load_hyper_param( config,model):
                 cur_config['learning_rate'] = learning_rate
                 cur_config['dropout_probs'] = dropout_probs
                 res.append(cur_config)
+
     elif model == 'STAMP':
         for learning_rate in learning_rate_lst:
             cur_config = config.copy()
             cur_config['learning_rate'] = learning_rate
             res.append(cur_config)
+
     elif model == 'SASRec':
         for learning_rate in [0.001, 0.0005]:
-            for n_layers in [2,3]:
-                for n_heads in [1 ,2]:
-                    for hidden_dropout_prob in [0,0.25 ]:
-                        for attn_dropout_prob in [0,0.25 ]:
+            for n_layers in [2, 3]:
+                for n_heads in [1, 2]:
+                    for hidden_dropout_prob in [0, 0.25]:
+                        for attn_dropout_prob in [0, 0.25]:
                             cur_config = config.copy()
                             cur_config['learning_rate'] = learning_rate
                             cur_config['n_layers'] = n_layers
@@ -132,73 +137,73 @@ def load_hyper_param( config,model):
                 cur_config['learning_rate'] = learning_rate
                 cur_config['step'] = step
                 res.append(cur_config)
-    # elif model == 'GCSAN':
-    #     for learning_rate in [0.001, 0.0005]:
-    #         for n_layers in [2,3]:
-    #             for n_heads in [1 ,2]:
-    #                 for hidden_dropout_prob in [0,0.25 ]:
-    #                     for attn_dropout_prob in [0,0.25 ]:
-    #                         for step in [1,2,3]:
-    #                             cur_config = config.copy()
-    #                             cur_config['learning_rate'] = learning_rate
-    #                             cur_config['n_layers'] = n_layers
-    #                             cur_config['n_heads'] = n_heads
-    #                             cur_config['hidden_dropout_prob'] = hidden_dropout_prob
-    #                             cur_config['attn_dropout_prob'] = attn_dropout_prob
-    #                             cur_config['step'] = step
-    #                             res.append(cur_config)
     elif model == 'GCSAN':
-        for step in step_lst:
-            cur_config = config.copy()
-            cur_config['step'] = step
-            if config['dataset'] == 'tmall_buy':
-                learning_rate = 0.001
-                n_layers = 2
-                n_heads = 2
-                hidden_dropout_prob = 0.25
-                attn_dropout_prob = 0
-            elif config['dataset'] == 'elec':
-                learning_rate = 0.0005
-                n_layers = 2
-                n_heads = 1
-                hidden_dropout_prob = 0.25
-                attn_dropout_prob = 0.25
-            elif config['dataset'] == 'movie_tv':
-                learning_rate = 0.001
-                n_layers = 2
-                n_heads = 2
-                hidden_dropout_prob = 0.25
-                attn_dropout_prob = 0.5
-            elif config['dataset'] == 'movielen':
-                learning_rate = 0.0005
-                n_layers = 3
-                n_heads = 2
-                hidden_dropout_prob = 0
-                attn_dropout_prob = 0.25
-            elif config['dataset'] == 'kindle':
-                learning_rate = 0.0005
-                n_layers = 3
-                n_heads = 2
-                hidden_dropout_prob = 0.25
-                attn_dropout_prob = 0
-            elif config['dataset'] == 'home':
-                learning_rate = 0.001
-                n_layers = 3
-                n_heads = 2
-                hidden_dropout_prob = 0.25
-                attn_dropout_prob = 0
-            elif config['dataset'] == 'phone':
-                learning_rate = 0.001
-                n_layers = 2
-                n_heads = 1
-                hidden_dropout_prob = 0.25
-                attn_dropout_prob = 0.25
-            cur_config['learning_rate'] = learning_rate
-            cur_config['n_layers'] = n_layers
-            cur_config['n_heads'] = n_heads
-            cur_config['hidden_dropout_prob'] = hidden_dropout_prob
-            cur_config['attn_dropout_prob'] = attn_dropout_prob
-            res.append(cur_config)
+        for learning_rate in [ 0.0005]:
+            for n_layers in [2 ]:
+                for n_heads in [1 ]:
+                    for hidden_dropout_prob in [ 0.25 ]:
+                        for attn_dropout_prob in [0,0.25 ]:
+                            for step in [1,2,3 ]:
+                                cur_config = config.copy()
+                                cur_config['learning_rate'] = learning_rate
+                                cur_config['n_layers'] = n_layers
+                                cur_config['n_heads'] = n_heads
+                                cur_config['hidden_dropout_prob'] = hidden_dropout_prob
+                                cur_config['attn_dropout_prob'] = attn_dropout_prob
+                                cur_config['step'] = step
+                                res.append(cur_config)
+    # elif model == 'GCSAN':
+    #     for step in [2,3,4]:
+    #         cur_config = config.copy()
+    #         cur_config['step'] = step
+    #         if config['dataset'] == 'tmall_buy':
+    #             learning_rate = 0.001
+    #             n_layers = 2
+    #             n_heads = 2
+    #             hidden_dropout_prob = 0.25
+    #             attn_dropout_prob = 0
+    #         elif config['dataset'] == 'elec':
+    #             learning_rate = 0.0005
+    #             n_layers = 2
+    #             n_heads = 1
+    #             hidden_dropout_prob = 0.25
+    #             attn_dropout_prob = 0.25
+    #         elif config['dataset'] == 'movie_tv':
+    #             learning_rate = 0.001
+    #             n_layers = 2
+    #             n_heads = 2
+    #             hidden_dropout_prob = 0.25
+    #             attn_dropout_prob = 0.5
+    #         elif config['dataset'] == 'movielen':
+    #             learning_rate = 0.0005
+    #             n_layers = 3
+    #             n_heads = 2
+    #             hidden_dropout_prob = 0
+    #             attn_dropout_prob = 0.25
+    #         elif config['dataset'] == 'kindle':
+    #             learning_rate = 0.0005
+    #             n_layers = 3
+    #             n_heads = 2
+    #             hidden_dropout_prob = 0.25
+    #             attn_dropout_prob = 0
+    #         elif config['dataset'] == 'home':
+    #             learning_rate = 0.001
+    #             n_layers = 3
+    #             n_heads = 2
+    #             hidden_dropout_prob = 0.25
+    #             attn_dropout_prob = 0
+    #         elif config['dataset'] == 'phone':
+    #             learning_rate = 0.001
+    #             n_layers = 2
+    #             n_heads = 1
+    #             hidden_dropout_prob = 0.25
+    #             attn_dropout_prob = 0.25
+    #         cur_config['learning_rate'] = learning_rate
+    #         cur_config['n_layers'] = n_layers
+    #         cur_config['n_heads'] = n_heads
+    #         cur_config['hidden_dropout_prob'] = hidden_dropout_prob
+    #         cur_config['attn_dropout_prob'] = attn_dropout_prob
+    #         res.append(cur_config)
 
 
 
@@ -223,218 +228,10 @@ def load_hyper_param( config,model):
     return res
 
 
-
-# def load_hyper_param(config,model,data_name):
-#     learning_rate_lst = [0.001, 0.005, 0.0005]
-#     step_lst = [1, 2, 3, 4]
-#     n_layers_lst = [2, 3]
-#     n_heads_lst = [1, 2]
-#     dropout_prob_lst = [0, 0.25, 0.5]
-#     narm_dropout_probs = [[0, 0], [0, 0.25], [0, 0.5], [0.25, 0.25],
-#                           [0.25, 0.5], [0.5, 0.5], [0.25, 0.0],
-#                           [0.5, 0.25], [0.25, 0]]
-#     # narm_dropout_probs = [[0.25,0],[0.5,0],[0.5,0.25]]
-#     block_lst = [1, 3, 5]
-#
-#     res = []
-#
-#     if data_name == 'tmall_buy':
-#         assert model == 'GRU4Rec'
-#         for learning_rate in learning_rate_lst:
-#             for dropout_prob in dropout_prob_lst:
-#                 cur_config = config.copy()
-#                 cur_config['learning_rate'] = learning_rate
-#                 cur_config['dropout_prob'] = dropout_prob
-#                 res.append(cur_config)
-#     if data_name == 'elec':
-#         assert model == 'GRU4Rec'
-#         for learning_rate in learning_rate_lst:
-#             for dropout_prob in dropout_prob_lst:
-#                 cur_config = config.copy()
-#                 cur_config['learning_rate'] = learning_rate
-#                 cur_config['dropout_prob'] = dropout_prob
-#                 res.append(cur_config)
-#
-#     if data_name == 'movie_tv':
-#         assert model == 'NARM'
-#         for learning_rate in learning_rate_lst:
-#             for dropout_probs in narm_dropout_probs:
-#                 cur_config = config.copy()
-#                 cur_config['learning_rate'] = learning_rate
-#                 cur_config['dropout_probs'] = dropout_probs
-#                 res.append(cur_config)
-#
-#     if data_name == 'kindle':
-#         assert model == 'SASRec'
-#         cur_config = copy.deepcopy(config)
-#         cur_config['learning_rate'] = 0.0005
-#         cur_config['n_layers'] = 3
-#         cur_config['n_heads'] = 2
-#         cur_config['hidden_dropout_prob'] = 0.25
-#         cur_config['attn_dropout_prob'] = 0
-#         res.append(cur_config)
-#
-#     if data_name == 'phone':
-#         assert model == 'GRU4Rec'
-#         # cur_config = copy.deepcopy(config)
-#         # cur_config['learning_rate'] = 0.005
-#         # cur_config['dropout_prob'] = 0.5
-#         for learning_rate in learning_rate_lst:
-#             for dropout_prob in dropout_prob_lst:
-#                 cur_config = config.copy()
-#                 cur_config['learning_rate'] = learning_rate
-#                 cur_config['dropout_prob'] = dropout_prob
-#                 res.append(cur_config)
-#     return res
-
-# def load_hyper_param( config,model):
-#     learning_rate_lst = [0.001,0.005, 0.0005]
-#     step_lst = [1,2,3,4]
-#     n_layers_lst = [2,3]
-#     n_heads_lst = [1,2]
-#     dropout_prob_lst = [0,0.25,0.5]
-#     narm_dropout_probs = [[0,0],[0,0.25],[0,0.5],[0.25,0.25],
-#                           [0.25,0.5],[0.5,0.5],[0.25,0.0],
-#                           [0.5,0.25],[0.25,0]]
-#     # narm_dropout_probs = [[0.25,0],[0.5,0],[0.5,0.25]]
-#     block_lst = [1,3,5]
-#
-#     res = []
-#
-#     if model == 'GRU4Rec':
-#         for learning_rate in learning_rate_lst:
-#             for dropout_prob in dropout_prob_lst:
-#                 cur_config = config.copy()
-#                 cur_config['learning_rate'] = learning_rate
-#                 cur_config['dropout_prob'] = dropout_prob
-#                 res.append(cur_config)
-#     elif model == 'NARM':
-#         for learning_rate in learning_rate_lst:
-#             for dropout_probs in narm_dropout_probs:
-#                 cur_config = config.copy()
-#                 cur_config['learning_rate'] = learning_rate
-#                 cur_config['dropout_probs'] = dropout_probs
-#                 res.append(cur_config)
-#     elif model == 'STAMP':
-#         for learning_rate in learning_rate_lst:
-#             cur_config = config.copy()
-#             cur_config['learning_rate'] = learning_rate
-#             res.append(cur_config)
-#     elif model == 'SASRec':
-#         for learning_rate in [0.001, 0.0005]:
-#             for n_layers in [2,3]:
-#                 for n_heads in [1 ,2]:
-#                     for hidden_dropout_prob in [0,0.25 ]:
-#                         for attn_dropout_prob in [0,0.25 ]:
-#                             cur_config = config.copy()
-#                             cur_config['learning_rate'] = learning_rate
-#                             cur_config['n_layers'] = n_layers
-#                             cur_config['n_heads'] = n_heads
-#                             cur_config['hidden_dropout_prob'] = hidden_dropout_prob
-#                             cur_config['attn_dropout_prob'] = attn_dropout_prob
-#                             res.append(cur_config)
-#     elif model == 'SRGNN':
-#         for learning_rate in learning_rate_lst:
-#             for step in step_lst:
-#                 cur_config = config.copy()
-#                 cur_config['learning_rate'] = learning_rate
-#                 cur_config['step'] = step
-#                 res.append(cur_config)
-#     # elif model == 'GCSAN':
-#     #     for learning_rate in [0.001, 0.0005]:
-#     #         for n_layers in [2,3]:
-#     #             for n_heads in [1 ,2]:
-#     #                 for hidden_dropout_prob in [0,0.25 ]:
-#     #                     for attn_dropout_prob in [0,0.25 ]:
-#     #                         for step in [1,2,3]:
-#     #                             cur_config = config.copy()
-#     #                             cur_config['learning_rate'] = learning_rate
-#     #                             cur_config['n_layers'] = n_layers
-#     #                             cur_config['n_heads'] = n_heads
-#     #                             cur_config['hidden_dropout_prob'] = hidden_dropout_prob
-#     #                             cur_config['attn_dropout_prob'] = attn_dropout_prob
-#     #                             cur_config['step'] = step
-#     #                             res.append(cur_config)
-#     elif model == 'GCSAN':
-#         for step in step_lst:
-#             cur_config = config.copy()
-#             cur_config['step'] = step
-#             if config['dataset'] == 'tmall_buy':
-#                 learning_rate = 0.001
-#                 n_layers = 2
-#                 n_heads = 2
-#                 hidden_dropout_prob = 0.25
-#                 attn_dropout_prob = 0
-#             elif config['dataset'] == 'elec':
-#                 learning_rate = 0.0005
-#                 n_layers = 2
-#                 n_heads = 1
-#                 hidden_dropout_prob = 0.25
-#                 attn_dropout_prob = 0.25
-#             elif config['dataset'] == 'movie_tv':
-#                 learning_rate = 0.001
-#                 n_layers = 2
-#                 n_heads = 2
-#                 hidden_dropout_prob = 0.25
-#                 attn_dropout_prob = 0.5
-#             elif config['dataset'] == 'movielen':
-#                 learning_rate = 0.0005
-#                 n_layers = 3
-#                 n_heads = 2
-#                 hidden_dropout_prob = 0
-#                 attn_dropout_prob = 0.25
-#             elif config['dataset'] == 'kindle':
-#                 learning_rate = 0.0005
-#                 n_layers = 3
-#                 n_heads = 2
-#                 hidden_dropout_prob = 0.25
-#                 attn_dropout_prob = 0
-#             elif config['dataset'] == 'home':
-#                 learning_rate = 0.001
-#                 n_layers = 3
-#                 n_heads = 2
-#                 hidden_dropout_prob = 0.25
-#                 attn_dropout_prob = 0
-#             elif config['dataset'] == 'phone':
-#                 learning_rate = 0.001
-#                 n_layers = 2
-#                 n_heads = 1
-#                 hidden_dropout_prob = 0.25
-#                 attn_dropout_prob = 0.25
-#             cur_config['learning_rate'] = learning_rate
-#             cur_config['n_layers'] = n_layers
-#             cur_config['n_heads'] = n_heads
-#             cur_config['hidden_dropout_prob'] = hidden_dropout_prob
-#             cur_config['attn_dropout_prob'] = attn_dropout_prob
-#             res.append(cur_config)
-#
-#
-#
-#     elif model == 'NextItNet':
-#         for learning_rate in learning_rate_lst:
-#             for block in block_lst:
-#                 cur_config = config.copy()
-#                 cur_config['learning_rate'] = learning_rate
-#                 cur_config['block_num'] = block
-#                 res.append(cur_config)
-#     elif model == 'GRNN':
-#         for learning_rate in learning_rate_lst:
-#             for dropout_prob in dropout_prob_lst:
-#                 cur_config = config.copy()
-#                 cur_config['learning_rate'] = learning_rate
-#                 cur_config['dropout_prob'] = dropout_prob
-#                 cur_config['gnn_hidden_dropout_prob'] = 0
-#                 cur_config['gnn_att_dropout_prob'] = 0
-#                 cur_config['n_layers'] = 1
-#                 cur_config['n_heads'] = 1
-#                 res.append(cur_config)
-#     return res
-
-
 if __name__ == "__main__":
 
-    model = 'GRU4Rec'
-    dataset = 'tmall_buy'
+    model = 'GCSAN'
+    dataset = 'movie_tv'
     gpu_id = 2
     epochs = 300
     train_batch_size = 512
@@ -485,7 +282,7 @@ if __name__ == "__main__":
     # TODO 是不是可以从这里循环调参数
     best_config = config.copy()
 
-    config_lst = load_hyper_param(config.copy(),model)
+    config_lst = load_hyper_param(config.copy(),model,dataset)
     hyper_count = len(config_lst)
     logger.info('[hyper parameter count]: %d' % (hyper_count))
     hyper_number = 0
@@ -493,7 +290,11 @@ if __name__ == "__main__":
     best_model_dict = None
 
 
+
     for config in config_lst:
+
+        seed_torch()
+
         hyper_number += 1
 
 
@@ -583,7 +384,27 @@ if __name__ == "__main__":
         th.save(best_model_dict, model_save_path)
         loaded_model_dict = th.load(model_save_path)
 
-        best_model = model_obj
+        if config['model'] == 'GRU4Rec':
+            best_model = GRU4Rec(best_config, num_items)
+        elif config['model'] == 'NARM':
+            best_model = NARM(best_config, num_items)
+        elif config['model'] == 'SASRec':
+            best_model = SASRec(best_config,num_items)
+        elif config['model'] =='STAMP':
+            best_model = STAMP(best_config, num_items)
+        elif config['model'] == 'SRGNN':
+            best_model = SRGNN(best_config,num_items)
+        elif config['model'] == 'GCSAN':
+            best_model = GCSAN(best_config,num_items)
+        elif config['model'] == 'NextItNet':
+            best_model = NextItNet(best_config, num_items)
+        elif config['model'] == 'GRNN':
+            best_model = GRNN(best_config, num_items)
+        # elif config['model'] == 'LESSR':
+        #     model = LESSR(config, num_items)
+        device = config['device']
+
+        best_model = best_model.to(device)
         best_model.load_state_dict(loaded_model_dict)
 
         runner = TrainRunnerNormal(

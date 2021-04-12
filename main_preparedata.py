@@ -10,11 +10,12 @@ from prepare_data.prepare_raw.get_origin_data_amazon_sports import Get_amazon_da
 from prepare_data.prepare_raw.get_origin_data_amazon_phone import Get_amazon_data_phone
 from prepare_data.prepare_raw.get_origin_data_amazon_books import Get_amazon_data_books
 from prepare_data.prepare_raw.get_origin_data_amazon_home import Get_amazon_data_home
+from prepare_data.prepare_raw.get_origin_data_amazon_music import Get_amazon_data_music
 from prepare_data.split_train_test import prepare_data_base
 if __name__ == '__main__':
 
-    data_name = 'home'
-    init_origin_data = True
+    data_name = 'music'
+    init_origin_data = False
     length_of_user_history = 50
 
     print(data_name)
@@ -33,6 +34,8 @@ if __name__ == '__main__':
         origin_data_model = Get_amazon_data_books(init_origin_data,data_name)
     elif data_name == 'home':
         origin_data_model = Get_amazon_data_home(init_origin_data,data_name)
+    elif data_name == 'music':
+        origin_data_model = Get_amazon_data_music(init_origin_data,data_name)
 
 
     origin_data_df = origin_data_model.origin_data

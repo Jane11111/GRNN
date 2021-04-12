@@ -76,7 +76,7 @@ def get_topk(user_lst,most_pop_lst, user_pop_dic,k):
 
 if __name__ == "__main__":
 
-    dataset = 'phone'
+    dataset = 'home'
 
     root = '/home/zxl/project/MTAM-t2/data/'
     origin_path = root+'orgin_data/'+dataset+'.csv'

@@ -729,6 +729,110 @@ class GRNN_heur_long(SequentialRecommender):
         return logits
 
 
+
+class GRNN_heur_long_pro(SequentialRecommender):
+
+
+    def __init__(self, config, item_num):
+        super(GRNN_heur_long_pro, self).__init__(config, item_num)
+
+        # load parameters info
+        self.embedding_size = config['embedding_size']
+        self.hidden_size = config['hidden_size']
+        self.step = config['step']
+        self.num_layers = config['num_layers']
+        self.dropout_prob = config['dropout_prob']
+        self.device = config['device']
+        self.gnn_hidden_dropout_prob = config['gnn_hidden_dropout_prob']
+        self.gnn_att_dropout_prob = config['gnn_att_dropout_prob']
+        self.agg_layer = config['agg_layer']
+
+        # define layers and loss
+        self.item_embedding = nn.Embedding(self.n_items, self.embedding_size, padding_idx=0)
+        self.emb_dropout = nn.Dropout(self.dropout_prob)
+        # position embedding
+        self.position_embedding = nn.Embedding(self.max_seq_length+1, self.hidden_size)
+        self.reverse_position_embedding = nn.Embedding(self.max_seq_length + 1, self.hidden_size)
+
+
+        # GRU
+        self.gru_layers= GRU_heur_long_pro(
+            input_size=self.embedding_size  ,
+            hidden_size=self.hidden_size,
+        ).to(config['device'])
+
+        self.dense = nn.Linear(self.hidden_size  , self.embedding_size )
+        # parameters initialization
+        self.apply(self._init_weights)
+        print('............initializing................')
+
+
+
+    def _init_weights(self, module):
+
+
+        if isinstance(module,nn.GRU) or isinstance(module, ModifiedGRU)  :
+
+            for weight in module.parameters():
+                if len(weight.shape) == 2:
+                    nn.init.orthogonal_(weight.data)
+        else:
+            stdv = 1.0 / math.sqrt(self.embedding_size)
+            for weight in self.parameters():
+                weight.data.uniform_(-stdv, stdv)
+
+
+    def get_pos_emb(self,item_seq,item_seq_len):
+        position_ids = torch.arange(item_seq.size(1), dtype=torch.long, device=item_seq.device)
+        position_ids = position_ids.unsqueeze(0).expand_as(item_seq)
+        new_seq_len = item_seq_len.view(-1, 1)
+        reverse_pos_id = new_seq_len - position_ids
+        reverse_pos_id = torch.clamp(reverse_pos_id, 0)
+
+        position_embedding = self.position_embedding(position_ids)
+        reverse_position_embedding = self.reverse_position_embedding(reverse_pos_id)
+        return position_embedding, reverse_position_embedding
+
+    def forward(self, item_seq, adj_in, item_seq_len):
+
+
+        position_embedding,reverse_position_embedding = self.get_pos_emb(item_seq,item_seq_len)
+
+        item_seq_emb = self.item_embedding(item_seq)
+        item_seq_emb_dropout = self.emb_dropout(item_seq_emb)
+
+        """
+        GraphEmb
+        """
+
+        """
+        GRUEmb
+        """
+        gru_inputs =  item_seq_emb_dropout
+        gru_outputs, _ = self.gru_layers(gru_inputs,adj_in)
+
+        gru_outputs = self.dense(gru_outputs)
+
+
+        """
+        READOUT FUNCTION
+        """
+        graph_intent = torch.mean(item_seq_emb_dropout,axis=1)
+        gru_intent = self.gather_indexes(gru_outputs, item_seq_len - 1)
+
+        hybrid_preference =   gru_intent + graph_intent
+
+        return hybrid_preference
+
+    def calculate_logits(self, item_seq, item_seq_len, adj_in ):
+
+
+        seq_output = self.forward(item_seq, adj_in,   item_seq_len)
+        test_item_emb = self.item_embedding.weight
+        logits = torch.matmul(seq_output, test_item_emb.transpose(0, 1))
+        return logits
+
+
 class GRNN_no_order(SequentialRecommender):
 
 
@@ -1051,7 +1155,7 @@ class GRNN_gru_pro(SequentialRecommender):
     def calculate_logits(self, item_seq, item_seq_len, adj_in ):
 
 
-        seq_output = self.forward(item_seq, adj_in,   item_seq_len)
+        seq_output = self.forward(item_seq, adj_in, item_seq_len)
         test_item_emb = self.item_embedding.weight
         logits = torch.matmul(seq_output, test_item_emb.transpose(0, 1))
         return logits
@@ -1134,6 +1238,41 @@ class GRU_heur_long(nn.Module):
         state = h
         for l in range(length):
             neighbors = torch.mean(x[:,:l+1,:],axis=1)
+
+            inputs = torch.cat((x[:,l,:],neighbors),axis=1)
+            output, state = self.cell(inputs,state)
+
+            outputs.append(output)
+        return torch.stack(outputs,1), state
+
+
+class GRU_heur_long_pro(nn.Module):
+
+    def __init__(self,input_size, hidden_size):
+
+        super(GRU_heur_long_pro,self).__init__()
+
+        self.cell = ModifiedGRUCell(input_size, hidden_size)
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+
+    def forward(self,x,masks,h=None):
+
+        batch_size, length = x.size(0), x.size(1)
+
+        outputs = []
+
+        if h is None:
+            h = torch.zeros(batch_size, self.hidden_size,device = x.device )
+        state = h
+        for l in range(length):
+            cur_masks = masks[:,l,:].view(batch_size,-1,1) # batch_size, 50,1
+            neighbor_count = torch.sum(cur_masks,axis=1) #batch_size, 1
+            neighbor_count = torch.clamp(neighbor_count,min = 1)
+
+            neighbors = torch.sum((cur_masks * x ),axis=1)/neighbor_count
+
+            # neighbors = torch.mean(x[:,:l+1,:],axis=1)
 
             inputs = torch.cat((x[:,l,:],neighbors),axis=1)
             output, state = self.cell(inputs,state)

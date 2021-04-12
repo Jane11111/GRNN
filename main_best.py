@@ -11,9 +11,8 @@ from prepare_data.preprocess import PrepareData
 from prepare_data.dataset import PaddedDataset
 from prepare_data.collate import collate_fn
 from utils.trainer import TrainRunner
-from model.grnn import GRNN ,GRNN_only_graph, \
-    GRNN_weak_order, GRNN_heur_long,GRNN_no_order,\
-    GRNN_gru,GRNN_gru_pro
+from model.grnn import GRNN
+from model.grnn import GRNN_heur_long_pro
 # from config.configurator import Config
 import yaml
 import logging
@@ -48,7 +47,6 @@ def load_data(prepare_data_model):
         batch_size=config['train_batch_size'],
         shuffle=True,
         drop_last=False,
-        num_workers=4,
         collate_fn=collate_fn,
         pin_memory=True
     )
@@ -57,7 +55,6 @@ def load_data(prepare_data_model):
         test_set,
         batch_size=config['train_batch_size'],
         shuffle=False,
-        num_workers=4,
         collate_fn=collate_fn,
         pin_memory=True
     )
@@ -66,14 +63,13 @@ def load_data(prepare_data_model):
         dev_set,
         batch_size=config['train_batch_size'],
         shuffle=False,
-        num_workers=4,
         collate_fn=collate_fn,
         pin_memory=True
     )
     return num_items, train_loader, test_loader, dev_loader
 
 
-def load_hyper_param(config ):
+def load_hyper_param(config ,data_name = None):
 
 
     res = []
@@ -83,7 +79,7 @@ def load_hyper_param(config ):
                 for agg_layer in [1,2,3]:
                     for embedding_size in [128 ]:
                         for hidden_size in [128  ]:
-                            for lr in [0.005,0.001,  0.0005]:
+                            for lr in [0.001,0.005,  0.0005]:
                                 cur_config = config.copy()
                                 cur_config['hidden_size'] = hidden_size
                                 cur_config['embedding_size'] = embedding_size
@@ -95,11 +91,12 @@ def load_hyper_param(config ):
                                 res.append(cur_config)
     return res
 
+
 if __name__ == "__main__":
 
-    model = 'GRNN'
-    dataset = 'home'
-    gpu_id = 2
+    model = 'GRNN_heur_long_pro'
+    dataset = 'elec'
+    gpu_id = 0
     epochs = 300
     train_batch_size = 512
 
@@ -115,8 +112,6 @@ if __name__ == "__main__":
     config_path = './config/'+model+'.yaml'
     with open(config_path, 'r') as f:
         dict = yaml.load(f.read(),Loader=yaml.FullLoader)
-
-
 
     for key in dict:
         config[key] = dict[key]
@@ -147,7 +142,7 @@ if __name__ == "__main__":
 
     # TODO 是不是可以从这里循环调参数
     best_config = config.copy()
-    config_lst = load_hyper_param(config )
+    config_lst = load_hyper_param(config,data_name=dataset)
 
     prepare_data_model = PrepareData(config, logger)
     num_items, train_loader, test_loader, dev_loader = load_data(prepare_data_model)
@@ -161,6 +156,7 @@ if __name__ == "__main__":
 
 
     for config in config_lst:
+        seed_torch()
         hyper_number += 1
 
 
@@ -169,6 +165,8 @@ if __name__ == "__main__":
 
         if config['model'] == 'GRNN':
             model_obj = GRNN(config, num_items)
+        elif config['model'] == 'GRNN_heur_long_pro':
+            model_obj = GRNN_heur_long_pro(config, num_items)
 
         device = config['device']
         model_obj = model_obj.to(device)
@@ -231,7 +229,8 @@ if __name__ == "__main__":
         th.save(best_model_dict, model_save_path)
         loaded_model_dict = th.load(model_save_path)
 
-        best_model = model_obj
+        best_model = GRNN(best_config,num_items)
+        best_model = best_model.to(device)
         best_model.load_state_dict(loaded_model_dict)
 
         runner = TrainRunner(

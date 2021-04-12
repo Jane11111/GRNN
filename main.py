@@ -13,6 +13,7 @@ from utils.trainer import TrainRunner
 from model.grnn import GRNN ,GRNN_only_graph, \
     GRNN_weak_order, GRNN_heur_long,GRNN_no_order,\
     GRNN_gru,GRNN_gru_pro
+# from model.grnn import GRNN
 # from config.configurator import Config
 import yaml
 import logging
@@ -82,7 +83,7 @@ def load_hyper_param(config ):
                 for agg_layer in [1,2,3]:
                     for embedding_size in [128 ]:
                         for hidden_size in [128  ]:
-                            for lr in [0.005, 0.001, 0.0005]:
+                            for lr in [0.001,0.005,  0.0005]:
                                 cur_config = config.copy()
                                 cur_config['hidden_size'] = hidden_size
                                 cur_config['embedding_size'] = embedding_size
@@ -97,9 +98,9 @@ def load_hyper_param(config ):
 
 if __name__ == "__main__":
 
-    model = 'GRNN_weak_order'
-    dataset = 'home'
-    gpu_id = 2
+    model = 'GRNN'
+    dataset = 'elec'
+    gpu_id = 3
     epochs = 300
     train_batch_size = 512
 

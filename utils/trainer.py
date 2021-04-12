@@ -212,7 +212,21 @@ class TrainRunner:
                 _, topk = logits.topk(k=1)
                 top1_lst.extend(list(topk.cpu().numpy().reshape(-1)))
         return top1_lst
+    def get_topk(self,model,  k):
+        model.eval()
+        device = self.device
+        data_loader = self.test_loader
 
+        topk_lst = []
+        with th.no_grad():
+            for batch in data_loader:
+                user_id, item_seq, target_id, item_seq_len, \
+                adj_in  = prepare_batch(batch, device)
+                logits = model.calculate_logits(item_seq, item_seq_len, adj_in )
+
+                _, topk = logits.topk(k=k)
+                topk_lst.extend( topk.cpu().numpy().tolist())
+        return topk_lst
 
 class TrainRunnerNormal:
     def __init__(
@@ -396,7 +410,20 @@ class TrainRunnerNormal:
     def get_best_model(self):
         return self.best_model
 
+    def get_topk(self,model,  k):
+        model.eval()
+        device = self.device
+        data_loader = self.test_loader
 
+        topk_lst = []
+        with th.no_grad():
+            for batch in data_loader:
+                user_id, item_seq, target_id, item_seq_len = prepare_batch(batch, device)
+                logits = model.calculate_logits(item_seq, item_seq_len  )
+
+                _, topk = logits.topk(k=k)
+                topk_lst.extend( topk.cpu().numpy().tolist())
+        return topk_lst
 
 class TrainRunnerLessr:
     def __init__(
@@ -568,3 +595,18 @@ class TrainRunnerLessr:
                 _, topk = logits.topk(k=1)
                 top1_lst.extend(list(topk.cpu().numpy().reshape(-1)))
         return top1_lst
+    def get_topk(self,model,  k):
+        model.eval()
+        device = self.device
+        data_loader = self.test_loader
+
+        topk_lst = []
+        with th.no_grad():
+            for batch in data_loader:
+                mg, sg, target_id = prepare_batch(batch, device)
+
+                logits = model.calculate_logits(mg, sg)
+
+                _, topk = logits.topk(k=k)
+                topk_lst.extend( topk.cpu().numpy().tolist())
+        return topk_lst

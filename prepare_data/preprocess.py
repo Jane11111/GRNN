@@ -5,25 +5,26 @@
 
 import numpy as np
 import pandas as pd
-
+import pickle
 
 class PrepareData():
     def __init__(self,config,logger):
-        root = '/home/zxl/project/MTAM-t2/data/'
+        # root = '/home/zxl/project/MTAM-t2/data/'
+        root = '/data/zxl/MTAM-t2/data/'
 
         self.train_path = root + 'training_testing_data/' + config[
-            'dataset'] + '_time_item_based_unidirection/train_data_new.txt'
+            'dataset'] + '_time_item_based_unidirection/train_data_new.pt'
         self.test_path = root + 'training_testing_data/' + config[
-            'dataset'] + '_time_item_based_unidirection/test_data_new.txt'
+            'dataset'] + '_time_item_based_unidirection/test_data_new.pt'
         self.dev_path = root + 'training_testing_data/' + config[
-            'dataset'] + '_time_item_based_unidirection/dev_data_new.txt'
+            'dataset'] + '_time_item_based_unidirection/dev_data_new.pt'
 
         self.normal_train_path = root + 'training_testing_data/'+config[
-            'dataset'] + '_time_item_based_unidirection/train_data.txt'
+            'dataset'] + '_time_item_based_unidirection/train_data_new.pt'
         self.normal_test_path = root + 'training_testing_data/'+config[
-            'dataset']+'_time_item_based_unidirection/test_data.txt'
+            'dataset']+'_time_item_based_unidirection/test_data_new.pt'
         self.normal_dev_path = root + 'training_testing_data/'+config[
-            'dataset']+'_time_item_based_unidirection/dev_data.txt'
+            'dataset']+'_time_item_based_unidirection/dev_data_new.pt'
 
 
         self.origin_path = root + 'orgin_data/'+config['dataset']+'.csv'
@@ -33,38 +34,7 @@ class PrepareData():
 
 
 
-    # def construct_graph(self,u_input):
-    #     position_count = len(u_input)
-    #     u_input = np.array(u_input)
-    #     u_A_out = np.zeros((position_count, position_count))
-    #     u_A_in = np.zeros((position_count, position_count))
-    #
-    #     for i in np.arange(len(u_input) - 2):
-    #         u_lst = np.where(u_input == u_input[i])[0]
-    #         v_lst = np.where(u_input == u_input[i + 1])[0]
-    #         # u_A_out[i][i] += 1
-    #         # u_A_in[i][i] += 1
-    #
-    #
-    #         for u in u_lst:
-    #             u_A_out[u][v_lst[0]] += 1  # 每个结点只计算一次
-    #         for v in v_lst:
-    #             u_A_in[v ][u_lst[0]] += 1
-    #         # for u in u_lst:  # 自环
-    #         #     u_A_out[u][u_lst[0]] += 1
-    #         #     u_A_in[u][u_lst[0]] += 1
-    #
-    #
-    #     # print(u_A_out)
-    #     u_sum_in = np.reshape(np.sum(u_A_in, 1), (-1, 1))
-    #     u_sum_in[np.where(u_sum_in == 0)] = 1
-    #     u_A_in = np.divide(u_A_in, u_sum_in)
-    #
-    #     u_sum_out = np.reshape(np.sum(u_A_out, 1), (-1, 1))
-    #     u_sum_out[np.where(u_sum_out == 0)] = 1
-    #     u_A_out = np.divide(u_A_out, u_sum_out)
-    #
-    #     return u_A_in, u_A_out
+     
     def construct_graph(self,u_input):
         position_count = len(u_input)
         u_input = np.array(u_input)
@@ -81,107 +51,7 @@ class PrepareData():
                     u_A_adj[v][u] = 1
 
         return u_A_adj
-    # def construct_graph(self, u_input,k=3):
-    #
-    #     position_count = len(u_input)
-    #     u_input = np.array(u_input)
-    #     u_A_adj = np.zeros((position_count, position_count))
-    #
-    #     for i in np.arange(len(u_input) ):
-    #         for j in np.arange(max(i-k,0),min(len(u_input),i+k+1),1):
-    #             u_A_adj [i][j] = 1
-    #
-    #     return u_A_adj
-
-    #
-    # def construct_graph (self,u_input):
-    #     position_count = len(u_input)
-    #     u_input = np.array(u_input)
-    #     u_A_out = np.zeros((position_count, position_count))
-    #     u_A_in = np.zeros((position_count, position_count))
-    #
-    #     for i in np.arange(len(u_input) - 2):
-    #         u_lst = np.where(u_input == u_input[i])[0]
-    #         v_lst = np.where(u_input == u_input[i + 1])[0]
-    #
-    #
-    #         for u in u_lst:
-    #             u_A_out[u][v_lst[-1]] += 1  # 每个结点只计算一次
-    #         for v in v_lst:
-    #             u_A_in[v ][u_lst[-1]] += 1
-    #
-    #
-    #
-    #     # print(u_A_out)
-    #     u_sum_in = np.reshape(np.sum(u_A_in, 1), (-1, 1))
-    #     u_sum_in[np.where(u_sum_in == 0)] = 1
-    #     u_A_in = np.divide(u_A_in, u_sum_in)
-    #
-    #     u_sum_out = np.reshape(np.sum(u_A_out, 1), (-1, 1))
-    #     u_sum_out[np.where(u_sum_out == 0)] = 1
-    #     u_A_out = np.divide(u_A_out, u_sum_out)
-    #
-    #     return u_A_in, u_A_out
-
-    # def construct_graph(self,u_input):
-    #     # 自环只加一次
-    #
-    #
-    #
-    #     position_count = len(u_input)
-    #     u_input = np.array(u_input)
-    #     u_A_out = np.zeros((position_count, position_count))
-    #     u_A_in = np.zeros((position_count, position_count))
-    #
-    #     if len(u_input) == len(set(u_input)):
-    #         for i in np.arange(len(u_input) - 1):
-    #              u_A_out[i,i:]=1
-    #     else:
-    #         # print(u_input)
-    #         processed = {}
-    #         item2idx = {}
-    #         for i in range(len(u_input)):
-    #             item = u_input[i]
-    #             lst = np.where(u_input == item)[0]
-    #             item2idx[item] = lst
-    #
-    #         for i in np.arange(len(u_input) - 1):
-    #             # u_lst = np.where(u_input == u_input[i])[0]
-    #             u_lst = item2idx[u_input[i]]
-    #             u_A_out[i,i:] = 1
-    #             for j in np.arange(i,len(u_input),1):
-    #                 tuple = (u_input[i],u_input[j])
-    #                 if tuple in processed:
-    #                     continue
-    #                 processed[tuple] = True
-    #                 # v_lst = np.where(u_input == u_input[j])[0]
-    #                 v_lst = item2idx[u_input[j]]
-    #                 for u in u_lst:
-    #                     for v in v_lst:
-    #                         u_A_out[u][v]  = 1  # 每个结点只计算一次
-    #
-    #
-    #
-    #     return u_A_in, u_A_out
-
-    # def construct_graph(self,u_input):
-    #     # 自环只加一次
-    #     position_count = len(u_input)
-    #     u_input = np.array(u_input)
-    #     u_A_out = np.zeros((position_count, position_count))
-    #     u_A_in = np.zeros((position_count, position_count))
-    #
-    #
-    #     for i in np.arange(len(u_input) - 1):
-    #          u_A_out[i,i:]=1
-    #     return u_A_in, u_A_out
-    # def construct_graph (self,u_input):
-    #     position_count = len(u_input)
-    #     u_input = np.array(u_input)
-    #     u_A_out = np.ones((position_count, position_count))
-    #     u_A_in = np.ones((position_count, position_count))
-    #
-    #     return u_A_in, u_A_out
+    
 
     def get_statistics(self):
 
@@ -221,57 +91,66 @@ class PrepareData():
 
     def load_dataset(self,path, limit):
 
-        dataset = []
-        count = 0
-
-        with open(path ,'r') as f:
-            for l in f.readlines():
-                count+=1
-                if count >limit:
-                    break
-
-                example = eval(l)
-                user_id = example[0]
-                item_lst = example[1][:-1]
-                target_id = example[7][0]
-                length = example[8]-1
-                # u_A_in, u_A_out = self.construct_graph(item_lst)
-                # u_A_out = example[-1]
-                u_A_in = example[-2]
-                # u_A_in = np.zeros((len(item_lst),len(item_lst)))
-                # u_A_out = np.zeros((len(item_lst),len(item_lst)))
-                # u_A_out = np.zeros((1, 1))
-                # u_A_in = np.zeros((1, 1))
-                # u_A_out = self.construct_graph(item_lst,k=3)
-                # u_A_in = self.construct_graph(item_lst)
-                # u_A_out = np.zeros_like(u_A_in)
-
-
-                dataset.append([user_id,item_lst, target_id, length, u_A_in ])
+        file = open(path, 'rb')
+        dataset = pickle.loads(file.read())
+        limit = min(limit, len(dataset))
+        dataset = dataset[:limit]
+        # dataset = []
+        # count = 0
+        #
+        # with open(path ,'r') as f:
+        #     for l in f.readlines():
+        #         count+=1
+        #         if count >limit:
+        #             break
+        #
+        #         example = eval(l)
+        #         user_id = example[0]
+        #         item_lst = example[1][:-1]
+        #         target_id = example[7][0]
+        #         length = example[8]-1
+        #         # u_A_in, u_A_out = self.construct_graph(item_lst)
+        #         # u_A_out = example[-1]
+        #         u_A_in = example[-2]
+        #         # u_A_in = np.zeros((len(item_lst),len(item_lst)))
+        #         # u_A_out = np.zeros((len(item_lst),len(item_lst)))
+        #         # u_A_out = np.zeros((1, 1))
+        #         # u_A_in = np.zeros((1, 1))
+        #         # u_A_out = self.construct_graph(item_lst,k=3)
+        #         # u_A_in = self.construct_graph(item_lst)
+        #         # u_A_out = np.zeros_like(u_A_in)
+        #
+        #
+        #         dataset.append([user_id,item_lst, target_id, length, u_A_in ])
 
         return dataset
 
     def load_dataset_normal(self,path, limit):
 
-        dataset = []
-        count = 0
+        file = open(path, 'rb')
+        dataset = pickle.loads(file.read())
+        limit = min(limit, len(dataset))
+        dataset = dataset[:limit]
 
-        with open(path ,'r') as f:
-            for l in f.readlines():
-                count+=1
-                if count >limit:
-                    break
-
-                example = eval(l)
-                user_id = example[0]
-                item_lst = example[1][:-1]
-                target_id = example[7][0]
-                length = example[8]-1
-                u_A_out = np.zeros((1, 1))
-                u_A_in = np.zeros((1, 1))
-
-
-                dataset.append([user_id,item_lst, target_id, length, u_A_in, u_A_out])
+        # dataset = []
+        # count = 0
+        #
+        # with open(path ,'r') as f:
+        #     for l in f.readlines():
+        #         count+=1
+        #         if count >limit:
+        #             break
+        #
+        #         example = eval(l)
+        #         user_id = example[0]
+        #         item_lst = example[1][:-1]
+        #         target_id = example[7][0]
+        #         length = example[8]-1
+        #         # u_A_out = np.zeros((1, 1))
+        #         # u_A_in = np.zeros((1, 1))
+        #
+        #
+        #         dataset.append([user_id,item_lst, target_id, length ])
 
 
         return dataset
@@ -281,9 +160,9 @@ class PrepareData():
         train_limit = 10000000
         test_limit = 20000
         dev_limit = 20000
-        # train_limit = 2000
-        # test_limit = 2000
-        # dev_limit = 2000
+        # train_limit = 200
+        # test_limit = 200
+        # dev_limit = 200
 
         self.train_set  = self.load_dataset(self.train_path,train_limit)
         self.test_set = self.load_dataset(self.test_path, test_limit)
@@ -298,9 +177,9 @@ class PrepareData():
         train_limit = 10000000
         test_limit = 20000
         dev_limit = 20000
-        # train_limit = 20000
-        # test_limit = 200
-        # dev_limit = 200
+        # train_limit = 2000
+        # test_limit = 2000
+        # dev_limit = 2000
 
         self.train_set  = self.load_dataset_normal(self.normal_train_path,train_limit)
         self.test_set = self.load_dataset_normal(self.normal_test_path, test_limit)

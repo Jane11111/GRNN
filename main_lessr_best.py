@@ -49,7 +49,6 @@ def load_data(prepare_data_model):
         batch_size=config['train_batch_size'],
         shuffle=True,
         drop_last=False,
-        num_workers=4,
         collate_fn=collate_fn_lessr,
     )
 
@@ -57,7 +56,6 @@ def load_data(prepare_data_model):
         test_set,
         batch_size=config['train_batch_size'],
         shuffle=False,
-        num_workers=4,
         collate_fn=collate_fn_lessr,
     )
 
@@ -65,7 +63,6 @@ def load_data(prepare_data_model):
         dev_set,
         batch_size=config['train_batch_size'],
         shuffle=False,
-        num_workers=4,
         collate_fn=collate_fn_lessr,
     )
 
@@ -83,8 +80,8 @@ def load_hyper_param(config,model):
 if __name__ == "__main__":
 
     model = 'LESSR_fast'
-    dataset = 'kindle'
-    gpu_id = 0
+    dataset = 'music'
+    gpu_id = 1
     epochs = 300
     train_batch_size = 512
 
@@ -149,6 +146,15 @@ if __name__ == "__main__":
 
     for lr in [0.001,  0.005, 0.0001, 0.0005]:
         for step in [1,2,3,4]:
+            # for lr in [1]:
+            #     for step in [1]:
+            # if dataset =='movielen':
+            #     lr = 0.001
+            #     step = 4
+            # if dataset == 'home':
+            #     lr = 0.001
+            #     step = 3
+            seed_torch()
             config['learning_rate'] = lr
             config['step'] = step # SRGNN, GCSAN, LESSR
 
@@ -156,9 +162,12 @@ if __name__ == "__main__":
             logger.info(config)
 
             model_obj = LESSR_fast(config, num_items)
+
+
+            # if lr != 0.001 or step != 4:
+            #     continue
+
             device = config['device']
-
-
             model_obj = model_obj.to(device)
 
             runner = TrainRunnerLessr(
