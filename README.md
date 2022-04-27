@@ -14,13 +14,15 @@ This is a pytorch implementation of the OAG-LC (Order-Aware Graph Neural Network
 
 1. preprocess the datasets:
 
-​      put the datasets to ` OAG_LC/data/origin_data/`
+​      put the datasets to ` RNN/data/origin_data/`
 
 ​      ` python main_preparedata.py`
 
 2. train our proposed model using `main_best.py`
 
    `python main_best.py`
+   
+   you can change the `model` variable in `main_best.py` to choose which model you want to run. `GRNN` is our proposed `OAG-LC` model.
 
 3. train the baseline models using `main_baseline_best.py` and `main_stargnn.py`
 
@@ -34,7 +36,7 @@ This is a pytorch implementation of the OAG-LC (Order-Aware Graph Neural Network
 
 # Parameter Settings
 
-The pre-trained OAG-LC models  for each dataset is located at `OAG_LC/data/pretrained_models`.  
+The pre-trained OAG-LC models  for each dataset is located at `GRNN/data/pretrained_models`.  
 
 The corresponding parameters are listed as below.
 
