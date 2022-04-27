@@ -177,7 +177,7 @@ def load_hyper_param(config ,data_name = None,model_name=None):
 if __name__ == "__main__":
 
     model = 'GRNN_only_graph'
-    dataset = 'tmall_buy'
+    dataset = 'elec'
     gpu_id = 0
     epochs = 300
     train_batch_size = 512
