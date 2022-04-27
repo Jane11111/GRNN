@@ -12,12 +12,12 @@ class Get_amazon_data_movie_tv(Get_origin_data_base):
     def __init__(self,init_origin_data):
 
         super(Get_amazon_data_movie_tv, self).__init__('movie_tv')
-        root = '/home/zxl/project/MTAM-t2/'
+        root = '/data/zxl/MTAM-t2/'
 
         self.raw_data_path = root+"data/raw_data/MoviesTV/amazon_movie/Movies_and_TV.json"
         self.raw_data_path_meta = root+"data/raw_data/MoviesTV/amazon_movie/meta_Movies_and_TV.json"
 
-        self.data_path = "data/orgin_data/movie_tv.csv"
+        self.data_path = root+"data/orgin_data/movie_tv.csv"
 
         if  init_origin_data == True:
 

@@ -10,7 +10,7 @@ class Get_tmall_buy_data(Get_origin_data_base):
     def __init__(self, init_origin_data):
 
         super(Get_tmall_buy_data, self).__init__('tmall_buy')
-        root = '/home/zxl/project/MTAM-t2/'
+        root = '/data/zxl/MTAM-t2/'
 
         self.raw_data_path = root+"data/raw_data/tmall_buy/tmall-buy.inter"
         self.data_path = root+"data/orgin_data/tmall_buy.csv"

@@ -10,6 +10,7 @@ from model.baseline.gru4rec import GRU4Rec
 from model.baseline.narm import NARM
 from model.baseline.sasrec import SASRec
 from model.baseline.stamp import STAMP
+from model.grnn import GRNN_only_graph,GRNN_gru_pro
 from model.baseline.srgnn import SRGNN
 from model.baseline.gcsan import GCSAN
 from prepare_data.dataset import PaddedDataset,PaddedDatasetNormal
@@ -28,12 +29,12 @@ import copy
 
 def load_data(prepare_data_model,model_name,config):
 
-    if model_name == 'GRNN':
+    if model_name == 'GRNN' or model_name == 'GRNN_gru_pro' or model_name == 'GRNN_only_graph':
 
         train_sessions, test_sessions, dev_sessions = prepare_data_model.read_train_dev_test()
     else:
         train_sessions, test_sessions, dev_sessions = prepare_data_model.read_train_dev_test_normal()
-    if model_name == 'GRNN':
+    if model_name == 'GRNN' or model_name == 'GRNN_gru_pro' or model_name == 'GRNN_only_graph':
         fn = collate_fn
         train_set = PaddedDataset(train_sessions, max_len)
         test_set = PaddedDataset(test_sessions, max_len)
@@ -85,7 +86,7 @@ def load_data(prepare_data_model,model_name,config):
     return num_items, train_loader, test_loader, dev_loader
 
 def get_runner(model_name,best_model,train_loader,test_loader, dev_loader,config,device,logger):
-    if model_name == 'GRNN':
+    if model_name == 'GRNN' or model_name == 'GRNN_gru_pro' or model_name == 'GRNN_only_graph':
         runner = TrainRunner(
             best_model,  # 最好的model
             train_loader,
@@ -144,7 +145,83 @@ def load_hyper_param(config,data_name , model_name):
     for key in dict:
         config[key] = dict[key]
 
+    """
+    t test for ablation
+    """
 
+    # if model_name == 'GRU4Rec' and data_name == 'movie_tv':
+    #         cur_config = config.copy()
+    #         cur_config['learning_rate'] = 0.005
+    #         cur_config['dropout_prob'] = 0
+    #         res.append(cur_config)
+    # elif model_name == 'GRNN_gru_pro' and data_name == 'tmall_buy':
+    #     embedding_size = 128
+    #     hidden_size = 128
+    #     gnn_hidden_dropout_prob = 0
+    #     gnn_att_dropout_prob = 0
+    #     learning_rate = 0.001
+    #     dropout_prob = 0.25
+    #     agg_layer = 3
+    #     cur_config = config.copy()
+    #     cur_config['hidden_size'] = hidden_size
+    #     cur_config['embedding_size'] = embedding_size
+    #     cur_config['gnn_hidden_dropout_prob'] = gnn_hidden_dropout_prob
+    #     cur_config['gnn_att_dropout_prob'] = gnn_att_dropout_prob
+    #     cur_config['learning_rate'] = learning_rate
+    #     cur_config['dropout_prob'] = dropout_prob
+    #     cur_config['agg_layer'] = agg_layer
+    #     res.append(cur_config)
+    # elif model_name == 'GRNN_only_graph' and data_name == 'tmall_buy':
+    #     embedding_size = 128
+    #     hidden_size = 128
+    #     gnn_hidden_dropout_prob = 0
+    #     gnn_att_dropout_prob = 0
+    #     learning_rate = 0.001
+    #     dropout_prob = 0.25
+    #     agg_layer = 1
+    #     cur_config = config.copy()
+    #     cur_config['hidden_size'] = hidden_size
+    #     cur_config['embedding_size'] = embedding_size
+    #     cur_config['gnn_hidden_dropout_prob'] = gnn_hidden_dropout_prob
+    #     cur_config['gnn_att_dropout_prob'] = gnn_att_dropout_prob
+    #     cur_config['learning_rate'] = learning_rate
+    #     cur_config['dropout_prob'] = dropout_prob
+    #     cur_config['agg_layer'] = agg_layer
+    #     res.append(cur_config)
+    # elif model_name == 'GRNN_only_graph' and data_name == 'home':
+    #     embedding_size = 128
+    #     hidden_size = 128
+    #     gnn_hidden_dropout_prob = 0
+    #     gnn_att_dropout_prob = 0
+    #     learning_rate = 0.001
+    #     dropout_prob = 0.25
+    #     agg_layer = 3
+    #     cur_config = config.copy()
+    #     cur_config['hidden_size'] = hidden_size
+    #     cur_config['embedding_size'] = embedding_size
+    #     cur_config['gnn_hidden_dropout_prob'] = gnn_hidden_dropout_prob
+    #     cur_config['gnn_att_dropout_prob'] = gnn_att_dropout_prob
+    #     cur_config['learning_rate'] = learning_rate
+    #     cur_config['dropout_prob'] = dropout_prob
+    #     cur_config['agg_layer'] = agg_layer
+    #     res.append(cur_config)
+    # elif model_name == 'GRNN_gru_pro' and data_name == 'home':
+    #     embedding_size = 128
+    #     hidden_size = 128
+    #     gnn_hidden_dropout_prob = 0
+    #     gnn_att_dropout_prob = 0
+    #     learning_rate = 0.001
+    #     dropout_prob = 0.25
+    #     agg_layer = 3
+    #     cur_config = config.copy()
+    #     cur_config['hidden_size'] = hidden_size
+    #     cur_config['embedding_size'] = embedding_size
+    #     cur_config['gnn_hidden_dropout_prob'] = gnn_hidden_dropout_prob
+    #     cur_config['gnn_att_dropout_prob'] = gnn_att_dropout_prob
+    #     cur_config['learning_rate'] = learning_rate
+    #     cur_config['dropout_prob'] = dropout_prob
+    #     cur_config['agg_layer'] = agg_layer
+    #     res.append(cur_config)
     if model_name == 'GRNN':
         embedding_size = 128
         hidden_size = 128
@@ -190,63 +267,63 @@ def load_hyper_param(config,data_name , model_name):
         cur_config['dropout_prob'] = dropout_prob
         cur_config['agg_layer'] = agg_layer
         res.append(cur_config)
-    elif model_name == 'LESSR_fast':
-        if data_name == 'movielen':
-            lr = 0.001
-            step = 4
-        if data_name == 'home':
-            lr = 0.001
-            step = 3
-        cur_config = config.copy()
-        cur_config['learning_rate'] = lr
-        cur_config['step'] = step  # SRGNN, GCSAN, LESSR
-        res.append(cur_config)
-    elif model_name == 'GRU4Rec':
-        if data_name == 'tmall_buy':
-            cur_config = config.copy()
-            cur_config['learning_rate'] = 0.001
-            cur_config['dropout_prob'] = 0
-            res.append(cur_config)
-        elif data_name == 'phone':
-            cur_config = config.copy()
-            cur_config['learning_rate'] = 0.005
-            cur_config['dropout_prob'] = 0.25
-            res.append(cur_config)
-        elif data_name == 'home':
-            cur_config = config.copy()
-            cur_config['learning_rate'] = 0.005
-            cur_config['dropout_prob'] = 0.25
-            res.append(cur_config)
-        elif data_name == 'elec':
-            cur_config = config.copy()
-            cur_config['learning_rate'] = 0.005
-            cur_config['dropout_prob'] = 0.25
-            res.append(cur_config)
-    elif model_name == 'NARM':
-        if data_name == 'movie_tv':
-            cur_config = config.copy()
-            cur_config['learning_rate'] = 0.005
-            cur_config['dropout_probs'] = [0.25,0]
-            res.append(cur_config)
-        if data_name == 'home':
-            cur_config = config.copy()
-            cur_config['learning_rate'] = 0.005
-            cur_config['dropout_probs'] = [0, 0]
-            res.append(cur_config)
-    elif model_name == 'SASRec':
-        if data_name == 'kindle':
-            cur_config = copy.deepcopy(config)
-            cur_config['learning_rate'] = 0.0005
-            cur_config['n_layers'] = 3
-            cur_config['n_heads'] = 1
-            cur_config['hidden_dropout_prob'] = 0.25
-            cur_config['attn_dropout_prob'] = 0.25
-            res.append(cur_config)
-    elif model_name == 'STAMP':
-        if data_name == 'tmall_buy':
-            cur_config = config.copy()
-            cur_config['learning_rate'] = 0.001
-            res.append(cur_config)
+    # elif model_name == 'LESSR_fast':
+    #     if data_name == 'movielen':
+    #         lr = 0.001
+    #         step = 4
+    #     if data_name == 'home':
+    #         lr = 0.001
+    #         step = 3
+    #     cur_config = config.copy()
+    #     cur_config['learning_rate'] = lr
+    #     cur_config['step'] = step  # SRGNN, GCSAN, LESSR
+    #     res.append(cur_config)
+    # elif model_name == 'GRU4Rec':
+    #     if data_name == 'tmall_buy':
+    #         cur_config = config.copy()
+    #         cur_config['learning_rate'] = 0.001
+    #         cur_config['dropout_prob'] = 0
+    #         res.append(cur_config)
+    #     elif data_name == 'phone':
+    #         cur_config = config.copy()
+    #         cur_config['learning_rate'] = 0.005
+    #         cur_config['dropout_prob'] = 0.25
+    #         res.append(cur_config)
+    #     elif data_name == 'home':
+    #         cur_config = config.copy()
+    #         cur_config['learning_rate'] = 0.005
+    #         cur_config['dropout_prob'] = 0.25
+    #         res.append(cur_config)
+    #     elif data_name == 'elec':
+    #         cur_config = config.copy()
+    #         cur_config['learning_rate'] = 0.005
+    #         cur_config['dropout_prob'] = 0.25
+    #         res.append(cur_config)
+    # elif model_name == 'NARM':
+    #     if data_name == 'movie_tv':
+    #         cur_config = config.copy()
+    #         cur_config['learning_rate'] = 0.005
+    #         cur_config['dropout_probs'] = [0.25,0]
+    #         res.append(cur_config)
+    #     if data_name == 'home':
+    #         cur_config = config.copy()
+    #         cur_config['learning_rate'] = 0.005
+    #         cur_config['dropout_probs'] = [0, 0]
+    #         res.append(cur_config)
+    # elif model_name == 'SASRec':
+    #     if data_name == 'kindle':
+    #         cur_config = copy.deepcopy(config)
+    #         cur_config['learning_rate'] = 0.0005
+    #         cur_config['n_layers'] = 3
+    #         cur_config['n_heads'] = 1
+    #         cur_config['hidden_dropout_prob'] = 0.25
+    #         cur_config['attn_dropout_prob'] = 0.25
+    #         res.append(cur_config)
+    # elif model_name == 'STAMP':
+    #     if data_name == 'tmall_buy':
+    #         cur_config = config.copy()
+    #         cur_config['learning_rate'] = 0.001
+    #         res.append(cur_config)
 
 
     return res
@@ -254,6 +331,23 @@ def load_hyper_param(config,data_name , model_name):
 
 def get_best_model_path(model , dataset):
     root = '/home/zxl/project/GRNN/data/model/'
+
+    """
+    t test for ablation
+    """
+    if dataset == 'movie_tv' and model == 'GRU4Rec':
+        model_save_path = root + 'GRU4Rec_movie_tv_2021-05-16_13-59-14.pkl'
+    if dataset == 'tmall_buy' and model == 'GRNN_gru_pro':
+        model_save_path = root + 'GRNN_gru_pro_tmall_buy_2021-05-16_13-11-36.pkl'
+    if dataset == 'tmall_buy' and model == 'GRNN_only_graph':
+        model_save_path = root + 'GRNN_only_graph_tmall_buy_2021-05-20_14-55-19.pkl'
+
+    if dataset == 'home' and model == 'GRNN_only_graph':
+        model_save_path = root + 'GRNN_only_graph_home_2021-05-16_13-04-14.pkl'
+    if dataset == 'home' and model == 'GRNN_gru_pro':
+        model_save_path = root + 'GRNN_gru_pro_home_2021-05-16_13-03-56.pkl'
+
+
     if dataset == 'movie_tv':
         if model == 'GRNN':
             model_save_path = root + 'GRNN_movie_tv_2020-12-26_20-18-41.pkl'
@@ -266,17 +360,17 @@ def get_best_model_path(model , dataset):
             model_save_path = root + 'GRU4Rec_tmall_buy_2020-12-26_16-39-46.pkl'
         if model == 'STAMP':
             model_save_path = root + 'STAMP_tmall_buy_2020-12-31_00-07-28.pkl'
-    elif dataset == 'phone':
-        if model == 'GRNN':
-            model_save_path = root + 'GRNN_phone_2020-12-26_18-11-31.pkl'
-        if model == 'GRU4Rec':
-            model_save_path = root + 'GRU4Rec_phone_2020-12-26_16-50-38.pkl'
-    elif dataset == 'movielen':
-        if model == 'GRNN':
-            # model_save_path = root + 'GRNN_movielen_2020-12-27_11-14-55.pkl'
-            model_save_path = root + 'GRNN_movielen_2020-12-30_19-36-02.pkl'
-        if model == 'LESSR_fast':
-            model_save_path = root  + 'LESSR_fast_movielen_2020-12-28_19-13-25.pkl'
+    # elif dataset == 'phone':
+    #     if model == 'GRNN':
+    #         model_save_path = root + 'GRNN_phone_2020-12-26_18-11-31.pkl'
+    #     if model == 'GRU4Rec':
+    #         model_save_path = root + 'GRU4Rec_phone_2020-12-26_16-50-38.pkl'
+    # elif dataset == 'movielen':
+    #     if model == 'GRNN':
+    #         # model_save_path = root + 'GRNN_movielen_2020-12-27_11-14-55.pkl'
+    #         model_save_path = root + 'GRNN_movielen_2020-12-30_19-36-02.pkl'
+    #     if model == 'LESSR_fast':
+    #         model_save_path = root  + 'LESSR_fast_movielen_2020-12-28_19-13-25.pkl'
     elif dataset == 'home':
         if model == 'GRNN':
             model_save_path = root + 'GRNN_home_2020-12-27_11-35-15.pkl'
@@ -286,11 +380,11 @@ def get_best_model_path(model , dataset):
             model_save_path = root + 'NARM_home_2020-12-30_21-41-05.pkl'
         if model == 'GRU4Rec':
             model_save_path = root + 'GRU4Rec_home_2020-12-30_22-20-35.pkl'
-    elif dataset == 'kindle':
-        if model == 'SASRec':
-            model_save_path = root + 'SASRec_kindle_2020-12-26_18-19-08.pkl'
-        if model == 'GRNN':
-            model_save_path = root + 'GRNN_kindle_2020-12-28_11-20-12.pkl'
+    # elif dataset == 'kindle':
+    #     if model == 'SASRec':
+    #         model_save_path = root + 'SASRec_kindle_2020-12-26_18-19-08.pkl'
+    #     if model == 'GRNN':
+    #         model_save_path = root + 'GRNN_kindle_2020-12-28_11-20-12.pkl'
     elif dataset == 'elec':
         if model == 'GRNN':
             model_save_path = root + 'GRNN_elec_2020-12-29_09-12-41.pkl'
@@ -318,6 +412,10 @@ def get_best_model(model_name,data_name,logger,config ):
         model_obj = LESSR_fast(config,num_items)
     elif model_name == 'STAMP':
         model_obj = STAMP(config,num_items)
+    elif model_name == 'GRNN_only_graph':
+        model_obj = GRNN_only_graph(config,num_items)
+    elif model_name == 'GRNN_gru_pro':
+        model_obj = GRNN_gru_pro(config,num_items)
 
     model_obj = model_obj.to(config['device'])
 
@@ -358,8 +456,8 @@ if __name__ == "__main__":
     gpu_id = 2
 
     model_name = 'GRNN'
-    data_name = 'movielen'
-    result_save_path = './data/best_result/'+model_name+'_'+data_name+'-2.txt'
+    data_name = 'home'
+    result_save_path = './data/best_result/'+model_name+'_'+data_name+'-0516.txt'
 
     config, logger, best_model, runner = prepare(model_name,data_name,gpu_id)
 

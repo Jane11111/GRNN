@@ -12,7 +12,7 @@ class Get_amazon_data_home(Get_origin_data_base):
     def __init__(self,init_origin_data,data_name):
 
         super(Get_amazon_data_home, self).__init__(data_name=data_name)
-        root = '/home/zxl/project/MTAM-t2/'
+        root = '/data/zxl/MTAM-t2/'
 
         self.raw_data_path = root+"data/raw_data/amazon_"+data_name+"/Home_and_Kitchen.json"
         self.raw_data_path_meta = root+"data/raw_data/amazon_"+data_name+"/meta_Home_and_Kitchen.json"

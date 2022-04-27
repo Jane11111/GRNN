@@ -10,40 +10,38 @@ import random
 import torch as torch
 
 
-def seed_torch(seed=2020):
-	random.seed(seed)
-	os.environ['PYTHONHASHSEED'] = str(seed) # 为了禁止hash随机化，使得实验可复现
-	np.random.seed(seed)
-	torch.manual_seed(seed)
-	torch.cuda.manual_seed(seed)
-	torch.cuda.manual_seed_all(seed) # if you are using multi-GPU.
-	torch.backends.cudnn.benchmark = False
-	torch.backends.cudnn.deterministic = True
+def construct_graph_no_duplication(self, u_input):
+	# 自环只加一次
 
-seed_torch()
+	position_count = len(u_input)
+	u_input = np.array(u_input)
+	# u_A_out = np.zeros(shape=(position_count, position_count), dtype=np.int)
+	u_A_in = np.zeros(shape=(position_count, position_count), dtype=np.int)
+
+	item2singleidx = {}
+	item2idx = {}
+
+	for i in range(len(u_input)):
+		item2singleidx[u_input[i]] = i
+		if u_input[i] not in item2idx:
+			item2idx[u_input[i]] = []
+		item2idx[u_input[i]].append(i)
+	processed_items = {}
+	for i in range(len(u_input) - 1, -1, -1):
+		if u_input[i] in processed_items:
+			continue
+		processed_items[u_input[i]] = True
+		for u in item2idx[u_input[i]]:
+			for j in range(i):
+				v_idx = item2singleidx[u_input[j]]
+				u_A_in[u][v_idx] = 1
+
+	u_A_in = u_A_in.tolist()
+	return u_A_in, u_A_in
 
 if __name__ == "__main__":
-	batch_size = 2
-	max_len = 3
-	num_units = 4
-	l = 0
-	masks = torch.Tensor(np.array([[[1,0,0],
-									[1,1,0],
-									[1,1,1]],
-								   [[1,1,0],
-									[1,1,0],
-									[1,1,1]]]))
-	x = torch.Tensor(np.array([[[1,2,3,4],
-									[1,1,3,3],
-									[1,1,1,5]],
-								   [[1,1,2,6],
-									[1,4,1,4],
-									[1,3,1,1]]]))
-	cur_masks = masks[:, l,:].view(batch_size, -1, 1)  # batch_size, 50,1
-	neighbor_count = torch.sum(cur_masks, axis=1)  # batch_size, 1 
-	sum_val = torch.sum((cur_masks * x), axis=1)
-	neighbor = sum_val/neighbor_count
-	print(cur_masks)
-	print(neighbor_count)
-	print(sum_val)
-	print(neighbor)
+
+	a = [1,2,3]
+	seq_padding_size = [0,7]
+	padded_alias_inputs = np.pad(a, seq_padding_size, 'constant', constant_values=(-1, -1))
+	print(padded_alias_inputs)

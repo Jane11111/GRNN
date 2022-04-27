@@ -297,12 +297,119 @@ class MultiLayerGRNN(SequentialRecommender):
         return logits
 
 
-
 class GRNN(SequentialRecommender):
-
 
     def __init__(self, config, item_num):
         super(GRNN, self).__init__(config, item_num)
+
+        # load parameters info
+        self.embedding_size = config['embedding_size']
+        self.hidden_size = config['hidden_size']
+        self.step = config['step']
+        self.num_layers = config['num_layers']
+        self.dropout_prob = config['dropout_prob']
+        self.device = config['device']
+        self.gnn_hidden_dropout_prob = config['gnn_hidden_dropout_prob']
+        self.gnn_att_dropout_prob = config['gnn_att_dropout_prob']
+        self.agg_layer = config['agg_layer']
+
+        # define layers and loss
+        self.item_embedding = nn.Embedding(self.n_items, self.embedding_size, padding_idx=0)
+        self.emb_dropout = nn.Dropout(self.dropout_prob)
+        # position embedding
+        self.position_embedding = nn.Embedding(self.max_seq_length + 1, self.hidden_size)
+        self.reverse_position_embedding = nn.Embedding(self.max_seq_length + 1, self.hidden_size)
+
+        self.gnn_layers = ConnectedGNN(embedding_size=self.embedding_size,
+                                       n_layers=self.agg_layer,
+                                       n_heads=1,
+                                       hidden_dropout_prob=self.gnn_hidden_dropout_prob,
+                                       att_dropout_prob=self.gnn_att_dropout_prob)
+
+        # GRU
+        self.gru_layers = ModifiedGRU(
+            input_size=self.embedding_size + self.embedding_size,
+            hidden_size=self.hidden_size,
+        ).to(config['device'])
+
+        self.dense = nn.Linear(self.hidden_size, self.embedding_size)
+        # parameters initialization
+        self.apply(self._init_weights)
+        print('............initializing................')
+
+    def _init_weights(self, module):
+
+        if isinstance(module, nn.GRU) or isinstance(module, ModifiedGRU):
+
+            for weight in module.parameters():
+                if len(weight.shape) == 2:
+                    nn.init.orthogonal_(weight.data)
+        else:
+            stdv = 1.0 / math.sqrt(self.embedding_size)
+            for weight in self.parameters():
+                weight.data.uniform_(-stdv, stdv)
+
+    def get_pos_emb(self, item_seq, item_seq_len):
+        position_ids = torch.arange(item_seq.size(1), dtype=torch.long, device=item_seq.device)
+        position_ids = position_ids.unsqueeze(0).expand_as(item_seq)
+        new_seq_len = item_seq_len.view(-1, 1)
+        reverse_pos_id = new_seq_len - position_ids
+        reverse_pos_id = torch.clamp(reverse_pos_id, 0)
+
+        position_embedding = self.position_embedding(position_ids)
+        reverse_position_embedding = self.reverse_position_embedding(reverse_pos_id)
+        return position_embedding, reverse_position_embedding
+
+    def forward(self, item_seq, adj_in, item_seq_len):
+
+        position_embedding, reverse_position_embedding = self.get_pos_emb(item_seq, item_seq_len)
+
+        item_seq_emb = self.item_embedding(item_seq)
+        item_seq_emb_dropout = self.emb_dropout(item_seq_emb)
+
+        """
+        **********************FINAL MODEL***********************
+        """
+        """
+        GraphEmb
+        """
+        gnn_inputs = item_seq_emb_dropout
+        graph_outputs = self.gnn_layers(item_seq_emb=gnn_inputs,
+                                        position_emb=position_embedding,
+                                        adj_mat=adj_in)
+        """
+        GRUEmb
+        """
+        gru_inputs = torch.cat((item_seq_emb_dropout, graph_outputs), 2)
+        gru_outputs, _ = self.gru_layers(gru_inputs)
+
+        gru_outputs = self.dense(gru_outputs)
+
+        """
+        READOUT FUNCTION
+        """
+        gru_intent = self.gather_indexes(gru_outputs, item_seq_len - 1)
+        graph_intent = self.gather_indexes(graph_outputs, item_seq_len - 1)
+
+        hybrid_preference = gru_intent + graph_intent
+
+        return hybrid_preference
+
+    def calculate_logits(self, item_seq, item_seq_len, adj_in, adj_out=None):
+
+        seq_output = self.forward(item_seq, adj_in, item_seq_len)
+        test_item_emb = self.item_embedding.weight
+        logits = torch.matmul(seq_output, test_item_emb.transpose(0, 1))
+        return logits
+
+
+class GRNN_gated_update(SequentialRecommender):
+
+    # TODO to be finished
+
+
+    def __init__(self, config, item_num):
+        super(GRNN_gated_update, self).__init__(config, item_num)
 
         # load parameters info
         self.embedding_size = config['embedding_size']
@@ -329,15 +436,46 @@ class GRNN(SequentialRecommender):
                                att_dropout_prob=self.gnn_att_dropout_prob )
 
         # GRU
-        self.gru_layers= ModifiedGRU(
-            input_size=self.embedding_size + self.embedding_size,
-            hidden_size=self.hidden_size,
-        ).to(config['device'])
+        # self.gru_layers= ModifiedGRU(
+        #     input_size=self.embedding_size + self.embedding_size,
+        #     hidden_size=self.hidden_size,
+        # ).to(config['device'])
+
+        #update
+
+        self.Wz_linear = nn.Linear(self.embedding_size,self.embedding_size)
+        self.Uz_linear = nn.Linear(self.embedding_size,self.embedding_size)
+
+        self.Wr_linear = nn.Linear(self.embedding_size,self.embedding_size)
+        self.Ur_linear = nn.Linear(self.embedding_size,self.embedding_size)
+
+        self.Wo_linear = nn.Linear(self.embedding_size,self.embedding_size)
+        self.Uo_linear = nn.Linear(self.embedding_size,self.embedding_size)
+
+
+
+
 
         self.dense = nn.Linear(self.hidden_size  , self.embedding_size )
         # parameters initialization
         self.apply(self._init_weights)
         print('............initializing................')
+
+
+
+    def gated_update(self,item_emb,neighbor_emb):
+
+        z = self.Wz_linear(neighbor_emb)+self.Uz_linear(neighbor_emb)
+        z = torch.sigmoid(z)
+
+        r = self.Wr_linear(neighbor_emb) + self.Ur_linear(neighbor_emb)
+        r = torch.sigmoid(r)
+
+        candidate_emb = self.Wo_linear(neighbor_emb)+self.Uo_linear(r*item_emb)
+        candidate_emb = torch.tanh(candidate_emb)
+
+        new_emb = (1-z)* item_emb+z*candidate_emb
+        return new_emb
 
 
 
@@ -387,10 +525,12 @@ class GRNN(SequentialRecommender):
         """
         GRUEmb
         """
-        gru_inputs = torch.cat((item_seq_emb_dropout,graph_outputs ),2)
-        gru_outputs, _ = self.gru_layers(gru_inputs)
+        # gru_inputs = torch.cat((item_seq_emb_dropout,graph_outputs ),2)
+        # gru_outputs, _ = self.gru_layers(gru_inputs)
+        #
+        # gru_outputs = self.dense(gru_outputs)
 
-        gru_outputs = self.dense(gru_outputs)
+        gru_outputs = self.gated_update(item_seq_emb_dropout,graph_outputs)
 
 
         """
@@ -404,8 +544,123 @@ class GRNN(SequentialRecommender):
 
         return hybrid_preference
 
-    def calculate_logits(self, item_seq, item_seq_len, adj_in ):
+    def calculate_logits(self, item_seq, item_seq_len, adj_in,adj_out = None ):
 
+
+        seq_output = self.forward(item_seq, adj_in, item_seq_len)
+        test_item_emb = self.item_embedding.weight
+        logits = torch.matmul(seq_output, test_item_emb.transpose(0, 1))
+        return logits
+
+
+class GRNN_linear_update(SequentialRecommender):
+
+    # TODO to be finished
+
+    def __init__(self, config, item_num):
+        super(GRNN_linear_update, self).__init__(config, item_num)
+
+        # load parameters info
+        self.embedding_size = config['embedding_size']
+        self.hidden_size = config['hidden_size']
+        self.step = config['step']
+        self.num_layers = config['num_layers']
+        self.dropout_prob = config['dropout_prob']
+        self.device = config['device']
+        self.gnn_hidden_dropout_prob = config['gnn_hidden_dropout_prob']
+        self.gnn_att_dropout_prob = config['gnn_att_dropout_prob']
+        self.agg_layer = config['agg_layer']
+
+        # define layers and loss
+        self.item_embedding = nn.Embedding(self.n_items, self.embedding_size, padding_idx=0)
+        self.emb_dropout = nn.Dropout(self.dropout_prob)
+        # position embedding
+        self.position_embedding = nn.Embedding(self.max_seq_length + 1, self.hidden_size)
+        self.reverse_position_embedding = nn.Embedding(self.max_seq_length + 1, self.hidden_size)
+
+        self.gnn_layers = ConnectedGNN(embedding_size=self.embedding_size,
+                                       n_layers=self.agg_layer,
+                                       n_heads=1,
+                                       hidden_dropout_prob=self.gnn_hidden_dropout_prob,
+                                       att_dropout_prob=self.gnn_att_dropout_prob)
+
+        # GRU
+        # self.gru_layers = ModifiedGRU(
+        #     input_size=self.embedding_size + self.embedding_size,
+        #     hidden_size=self.hidden_size,
+        # ).to(config['device'])
+
+        self.linear_update_layer = nn.Linear(self.embedding_size*2,self.embedding_size).to(config['device'])
+
+        self.dense = nn.Linear(self.hidden_size, self.embedding_size)
+        # parameters initialization
+        self.apply(self._init_weights)
+        print('............initializing................')
+
+    def _init_weights(self, module):
+
+        if isinstance(module, nn.GRU) or isinstance(module, ModifiedGRU):
+
+            for weight in module.parameters():
+                if len(weight.shape) == 2:
+                    nn.init.orthogonal_(weight.data)
+        else:
+            stdv = 1.0 / math.sqrt(self.embedding_size)
+            for weight in self.parameters():
+                weight.data.uniform_(-stdv, stdv)
+
+    def get_pos_emb(self, item_seq, item_seq_len):
+        position_ids = torch.arange(item_seq.size(1), dtype=torch.long, device=item_seq.device)
+        position_ids = position_ids.unsqueeze(0).expand_as(item_seq)
+        new_seq_len = item_seq_len.view(-1, 1)
+        reverse_pos_id = new_seq_len - position_ids
+        reverse_pos_id = torch.clamp(reverse_pos_id, 0)
+
+        position_embedding = self.position_embedding(position_ids)
+        reverse_position_embedding = self.reverse_position_embedding(reverse_pos_id)
+        return position_embedding, reverse_position_embedding
+
+    def forward(self, item_seq, adj_in, item_seq_len):
+
+        position_embedding, reverse_position_embedding = self.get_pos_emb(item_seq, item_seq_len)
+
+        item_seq_emb = self.item_embedding(item_seq)
+        item_seq_emb_dropout = self.emb_dropout(item_seq_emb)
+
+        """
+        **********************FINAL MODEL***********************
+        """
+        """
+        GraphEmb
+        """
+        gnn_inputs = item_seq_emb_dropout
+        graph_outputs = self.gnn_layers(item_seq_emb=gnn_inputs,
+                                        position_emb=position_embedding,
+                                        adj_mat=adj_in)
+        """
+        GRUEmb
+        """
+        # gru_inputs = torch.cat((item_seq_emb_dropout, graph_outputs), 2)
+        # gru_outputs, _ = self.gru_layers(gru_inputs)
+        #
+        # gru_outputs = self.dense(gru_outputs)
+
+        gru_inputs = torch.cat((item_seq_emb_dropout, graph_outputs), 2)
+        gru_outputs = self.linear_update_layer(gru_inputs)
+
+
+
+        """
+        READOUT FUNCTION
+        """
+        gru_intent = self.gather_indexes(gru_outputs, item_seq_len - 1)
+        graph_intent = self.gather_indexes(graph_outputs, item_seq_len - 1)
+
+        hybrid_preference = gru_intent + graph_intent
+
+        return hybrid_preference
+
+    def calculate_logits(self, item_seq, item_seq_len, adj_in, adj_out=None):
 
         seq_output = self.forward(item_seq, adj_in, item_seq_len)
         test_item_emb = self.item_embedding.weight

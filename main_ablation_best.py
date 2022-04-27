@@ -1,24 +1,20 @@
 # -*- coding: utf-8 -*-
-# @Time    : 2020-11-15 11:59
+# @Time    : 2021-04-30 16:45
 # @Author  : zxl
-# @FileName: main.py
+# @FileName: main_ablation_best.py
+
+
 
 import json
 
 import torch as th
 from torch.utils.data import DataLoader
 from prepare_data.preprocess import PrepareData
-from prepare_data.dataset import PaddedDataset
-from prepare_data.collate import collate_fn
-from utils.trainer import TrainRunner
-from model.grnn import GRNN
-from model.grnn import GRNN_heur_long_pro
-from model.grnn import GRNN_linear_update
-from model.grnn import GRNN_gated_update
+from prepare_data.dataset import PaddedDatasetGNN
+from prepare_data.collate import collate_gnn_fn
+from utils.trainer import TrainRunnerGnn
+from model.grnn_ablation import gated_my_update,wgat_my_update,grnn_no_duplication
 # from config.configurator import Config
-from model.grnn import GRNN ,GRNN_only_graph, \
-    GRNN_weak_order, GRNN_heur_long,GRNN_no_order,\
-    GRNN_gru,GRNN_gru_pro
 import yaml
 import logging
 from logging import getLogger
@@ -39,20 +35,26 @@ def seed_torch(seed=2020):
 
 seed_torch()
 
-def load_data(prepare_data_model):
+def load_data(prepare_data_model,model_name):
 
-    train_sessions, test_sessions, dev_sessions = prepare_data_model.read_train_dev_test()
+    if model_name == 'gated_my_update':
+        train_sessions, test_sessions, dev_sessions = prepare_data_model.read_train_dev_test_gated()
+    elif model_name == 'wgat_my_update':
+        train_sessions, test_sessions, dev_sessions = prepare_data_model.read_train_dev_test_wgat()
+    elif model_name == 'grnn_no_duplication':
+        train_sessions, test_sessions, dev_sessions = prepare_data_model.read_train_dev_test_no_duplication()
+
     prepare_data_model.get_statistics()
     num_items = prepare_data_model.get_item_num()
-    train_set = PaddedDataset(train_sessions, max_len)
-    test_set = PaddedDataset(test_sessions, max_len)
-    dev_set = PaddedDataset(dev_sessions, max_len)
+    train_set = PaddedDatasetGNN(train_sessions, max_len)
+    test_set = PaddedDatasetGNN(test_sessions, max_len)
+    dev_set = PaddedDatasetGNN(dev_sessions, max_len)
     train_loader = DataLoader(
         train_set,
         batch_size=config['train_batch_size'],
         shuffle=True,
         drop_last=False,
-        collate_fn=collate_fn,
+        collate_fn=collate_gnn_fn,
         pin_memory=True
     )
 
@@ -60,7 +62,7 @@ def load_data(prepare_data_model):
         test_set,
         batch_size=config['train_batch_size'],
         shuffle=False,
-        collate_fn=collate_fn,
+        collate_fn=collate_gnn_fn,
         pin_memory=True
     )
 
@@ -68,117 +70,66 @@ def load_data(prepare_data_model):
         dev_set,
         batch_size=config['train_batch_size'],
         shuffle=False,
-        collate_fn=collate_fn,
+        collate_fn=collate_gnn_fn,
         pin_memory=True
     )
     return num_items, train_loader, test_loader, dev_loader
 
 
-def load_hyper_param(config ,data_name = None,model_name=None):
+def load_hyper_param(config,model_name  ):
 
 
     res = []
-    # for dropout_prob in [ 0.25   ]:
-    #     for gnn_hidden_dropout_prob in [0 ]:
-    #         for gnn_att_dropout_prob in [0 ]:
-    #             for agg_layer in [ 2,3]:
-    #                 for embedding_size in [128 ]:
-    #                     for hidden_size in [128  ]:
-    #                         for lr in [0.001,0.005,  0.0005]:
-    #                             cur_config = config.copy()
-    #                             cur_config['hidden_size'] = hidden_size
-    #                             cur_config['embedding_size'] = embedding_size
-    #                             cur_config['gnn_hidden_dropout_prob'] = gnn_hidden_dropout_prob
-    #                             cur_config['gnn_att_dropout_prob'] = gnn_att_dropout_prob
-    #                             cur_config['learning_rate'] = lr
-    #                             cur_config['dropout_prob'] = dropout_prob
-    #                             cur_config['agg_layer'] = agg_layer
-    #                             res.append(cur_config)
+    if model_name == 'wgat_my_update':
 
-    # if model_name == 'GRNN_only_graph' and data_name == 'home':
-    #     """
-    #     {'model': 'GRNN_only_graph', 'dataset': 'home',
-    #      'embedding_size': 128, 'hidden_size': 128,
-    #      'num_layers': 1, 'dropout_prob': 0.25,
-    #      'learning_rate': 0.001, 'step': 1,
-    #      'gnn_hidden_dropout_prob': 0, 'gnn_att_dropout_prob': 0,
-    #      'agg_layer': 3}
-    #     """
-    #     new_config = config.copy()
-    #     for k,v in  {'model': 'GRNN_only_graph', 'dataset': 'home',
-    #      'embedding_size': 128, 'hidden_size': 128,
-    #      'num_layers': 1, 'dropout_prob': 0.25,
-    #      'learning_rate': 0.001, 'step': 1,
-    #      'gnn_hidden_dropout_prob': 0, 'gnn_att_dropout_prob': 0,
-    #      'agg_layer': 3}.items():
-    #         new_config[k] = v
-    #     res.append(new_config)
-    # elif model_name == 'GRNN_gru_pro' and data_name == 'home':
-    #     """
-    #     {'model': 'GRNN_gru_pro', 'dataset': 'home',
-    #      'embedding_size': 128, 'hidden_size': 128,
-    #      'num_layers': 1, 'dropout_prob': 0.25,
-    #      'learning_rate': 0.001, 'step': 1,
-    #      'gnn_hidden_dropout_prob': 0, 'gnn_att_dropout_prob': 0,
-    #      'agg_layer': 3}
-    #     """
-    #     new_config = config.copy()
-    #     for k,v in  {'model': 'GRNN_gru_pro', 'dataset': 'home',
-    #      'embedding_size': 128, 'hidden_size': 128,
-    #      'num_layers': 1, 'dropout_prob': 0.25,
-    #      'learning_rate': 0.001, 'step': 1,
-    #      'gnn_hidden_dropout_prob': 0, 'gnn_att_dropout_prob': 0,
-    #      'agg_layer': 3}.items():
-    #         new_config[k] = v
-    #     res.append(new_config)
-    # elif model_name == 'GRNN_gru_pro' and data_name == 'tmall_buy':
-    #     """
-    #     {'model': 'GRNN_gru', 'dataset': 'tmall_buy',
-    #     'embedding_size': 128, 'hidden_size': 128,
-    #     'num_layers': 1, 'dropout_prob': 0.25,
-    #     'learning_rate': 0.001, 'step': 1,
-    #     'gnn_hidden_dropout_prob': 0, 'gnn_att_dropout_prob': 0,
-    #     'agg_layer': 3}
-    #     """
-    #     new_config = config.copy()
-    #     for k,v in {'model': 'GRNN_gru_pro', 'dataset': 'tmall_buy',
-    #     'embedding_size': 128, 'hidden_size': 128,
-    #     'num_layers': 1, 'dropout_prob': 0.25,
-    #     'learning_rate': 0.001, 'step': 1,
-    #     'gnn_hidden_dropout_prob': 0, 'gnn_att_dropout_prob': 0,
-    #     'agg_layer': 3}.items():
-    #         new_config[k] = v
-    #     res.append(new_config)
-
-    if model_name == 'GRNN_only_graph' and data_name == 'tmall_buy':
-        """
-        { 'train_batch_size': 512, 'device': 'cuda:3', 
-        'embedding_size': 128, 'graph_emb_size': 128, 
-        'hidden_size': 128, 'layer_norm_eps': '1e-12', 
-        'num_layers': 1, 'dropout_prob': 0.25, 
-        'learning_rate': 0.001, 'step': 1, 
-        'gnn_hidden_dropout_prob': 0, 'gnn_att_dropout_prob': 0, 
-        'n_layers': 1, 'n_heads': 1, 'agg_layer': 1}
-        """
-        new_config = config.copy()
-        for k,v in  { 'train_batch_size': 512, 'device': 'cuda:3',
-        'embedding_size': 128, 'graph_emb_size': 128,
-        'hidden_size': 128, 'layer_norm_eps': '1e-12',
-        'num_layers': 1, 'dropout_prob': 0.25,
-        'learning_rate': 0.001, 'step': 1,
-        'gnn_hidden_dropout_prob': 0, 'gnn_att_dropout_prob': 0,
-        'n_layers': 1, 'n_heads': 1, 'agg_layer': 1}.items():
-            new_config[k] = v
-        res.append(new_config)
-
+        for lr in [0.001, 0.005, 0.0005]:
+            for dropout_prob in [  0.25]:
+                for embedding_size in [128 ]:
+                    for hidden_size in [128  ]:
+                        for n_heads in [1, 2 ]:
+                            cur_config = config.copy()
+                            cur_config['hidden_size'] = hidden_size
+                            cur_config['embedding_size'] = embedding_size
+                            cur_config['n_heads'] = n_heads
+                            cur_config['learning_rate'] = lr
+                            cur_config['dropout_prob'] = dropout_prob
+                            res.append(cur_config)
+    elif model_name == 'gated_my_update':
+        for lr in [0.001, 0.005, 0.0005]:
+            for dropout_prob in [  0.25]:
+                for embedding_size in [128 ]:
+                    for hidden_size in [128  ]:
+                        cur_config = config.copy()
+                        cur_config['hidden_size'] = hidden_size
+                        cur_config['embedding_size'] = embedding_size
+                        cur_config['learning_rate'] = lr
+                        cur_config['dropout_prob'] = dropout_prob
+                        res.append(cur_config)
+    elif model_name == 'grnn_no_duplication':
+        for dropout_prob in [  0.25]:
+            for gnn_hidden_dropout_prob in [0]:
+                for gnn_att_dropout_prob in [0]:
+                    for agg_layer in [ 2, 3]:
+                        for embedding_size in [128]:
+                            for hidden_size in [128]:
+                                for lr in [0.001, 0.005, 0.0005]:
+                                    cur_config = config.copy()
+                                    cur_config['hidden_size'] = hidden_size
+                                    cur_config['embedding_size'] = embedding_size
+                                    cur_config['gnn_hidden_dropout_prob'] = gnn_hidden_dropout_prob
+                                    cur_config['gnn_att_dropout_prob'] = gnn_att_dropout_prob
+                                    cur_config['learning_rate'] = lr
+                                    cur_config['dropout_prob'] = dropout_prob
+                                    cur_config['agg_layer'] = agg_layer
+                                    res.append(cur_config)
     return res
 
 
 if __name__ == "__main__":
 
-    model = 'GRNN_only_graph'
-    dataset = 'tmall_buy'
-    gpu_id = 0
+    model = 'grnn_no_duplication'
+    dataset = 'elec'
+    gpu_id = 1
     epochs = 300
     train_batch_size = 512
 
@@ -197,6 +148,7 @@ if __name__ == "__main__":
 
     for key in dict:
         config[key] = dict[key]
+    # Logging
 
     cur_time = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
     log_path = './data/log/'+config['model']+'_'+config['dataset']+'-'+str(cur_time)+"_log.txt"
@@ -224,10 +176,10 @@ if __name__ == "__main__":
 
     # TODO 是不是可以从这里循环调参数
     best_config = config.copy()
-    config_lst = load_hyper_param(config,data_name=dataset,model_name=model)
+    config_lst = load_hyper_param(config,model_name=model)
 
     prepare_data_model = PrepareData(config, logger)
-    num_items, train_loader, test_loader, dev_loader = load_data(prepare_data_model)
+    num_items, train_loader, test_loader, dev_loader = load_data(prepare_data_model,model_name = model)
 
     hyper_count = len(config_lst)
     logger.info('[hyper parameter count]: %d'%(hyper_count))
@@ -245,27 +197,17 @@ if __name__ == "__main__":
         logger.info(' start training, running parameters:')
         logger.info(config)
 
-        if config['model'] == 'GRNN':
-            model_obj = GRNN(config, num_items)
-        elif config['model'] == 'GRNN_heur_long_pro':
-            model_obj = GRNN_heur_long_pro(config, num_items)
-        elif config['model'] == 'GRNN_linear_update':
-            model_obj = GRNN_linear_update(config,num_items)
-        elif config['model'] == 'GRNN_gated_update':
-            model_obj = GRNN_gated_update(config,num_items)
-        elif config['model'] == 'GRNN_no_order':
-            model_obj = GRNN_no_order(config, num_items)
-        elif config['model'] == 'GRNN_gru':
-            model_obj = GRNN_gru(config, num_items)
-        elif config['model'] == 'GRNN_gru_pro':
-            model_obj = GRNN_gru_pro(config,num_items)
-        elif config['model'] == 'GRNN_only_graph':
-            model_obj = GRNN_only_graph(config,num_items)
+        if config['model'] == 'gated_my_update':
+            model_obj = gated_my_update(config, num_items)
+        elif config['model'] == 'wgat_my_update':
+            model_obj = wgat_my_update(config, num_items)
+        elif config['model'] == 'grnn_no_duplication':
+            model_obj = grnn_no_duplication(config,num_items)
 
         device = config['device']
         model_obj = model_obj.to(device)
 
-        runner = TrainRunner(
+        runner = TrainRunnerGnn(
             model_obj,
             train_loader,
             test_loader,
@@ -323,30 +265,18 @@ if __name__ == "__main__":
         th.save(best_model_dict, model_save_path)
         loaded_model_dict = th.load(model_save_path)
 
-        # best_model = GRNN(best_config,num_items)
-        if config['model'] == 'GRNN':
-            best_model = GRNN(best_config, num_items)
-        elif config['model'] == 'GRNN_heur_long_pro':
-            best_model = GRNN_heur_long_pro(best_config, num_items)
-        elif config['model'] == 'GRNN_linear_update':
-            best_model = GRNN_linear_update(best_config,num_items)
-        elif config['model'] == 'GRNN_gated_update':
-            best_model = GRNN_gated_update(best_config,num_items)
-        elif config['model'] == 'GRNN_no_order':
-            best_model = GRNN_no_order(best_config, num_items)
-        elif config['model'] == 'GRNN_gru':
-            best_model = GRNN_gru(best_config, num_items)
-        elif config['model'] == 'GRNN_gru_pro':
-            best_model = GRNN_gru_pro(best_config,num_items)
-        elif config['model'] == 'GRNN_only_graph':
-            best_model = GRNN_only_graph(best_config,num_items)
-
+        if config['model'] == 'gated_my_update':
+            best_model = gated_my_update(best_config, num_items)
+        elif config['model'] == 'wgat_my_update':
+            best_model = wgat_my_update(best_config, num_items)
+        elif config['model'] == 'grnn_no_duplication':
+            best_model = grnn_no_duplication(best_config,num_items)
 
 
         best_model = best_model.to(device)
         best_model.load_state_dict(loaded_model_dict)
 
-        runner = TrainRunner(
+        runner = TrainRunnerGnn(
             best_model, #最好的model
             train_loader,
             test_loader,
@@ -384,7 +314,4 @@ if __name__ == "__main__":
                            test_hit_20, test_ndcg_20, test_mrr_20))
         # save model
     save_load_best_model()
-
-
-
 

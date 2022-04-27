@@ -8,11 +8,11 @@ np.random.seed(1234)
 
 class Get_amazon_data_elec(Get_origin_data_base):
 
-    def __init__(self, init_origin_data):
+    def __init__(self, init_origin_data,data_name):
 
         super(Get_amazon_data_elec, self).__init__( 'elec')
 
-        root = '/home/zxl/project/MTAM-t2/'
+        root = '/data/zxl/MTAM-t2/'
         self.raw_data_path = root+"data/raw_data/amazon_electronics/Electronics.json"
         self.raw_data_path_meta = root+"data/raw_data/amazon_electronics/meta_Electronics.json"
 

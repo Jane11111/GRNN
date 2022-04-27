@@ -74,9 +74,27 @@ def evaluate_result(pred_lst, target_lst):
 if __name__ == "__main__":
 
     root = '/home/zxl/project/GRNN/data/best_result/'
-    data_name = 'movielen'
+    data_name = 'tmall_buy'
 
-    test_path = '/home/zxl/project/MTAM-t2/data/training_testing_data/' + data_name+ '_time_item_based_unidirection/test_data.txt'
+    test_path = '/data/zxl/MTAM-t2/data/training_testing_data/' + data_name+ '_time_item_based_unidirection/test_data.txt'
+
+    """
+    ablation t test
+    """
+    # grnn_path = root+'GRNN_movie_tv.txt'
+    # baseline_path = root + 'GRU4Rec_movie_tv-0516.txt'
+
+    grnn_path = root + 'GRNN_tmall_buy.txt'
+    baseline_path = root + 'GRNN_gru_pro_tmall_buy-0516.txt'
+
+    # grnn_path = root + 'GRNN_home.txt'
+    # baseline_path = root + 'GRNN_only_graph_home-0516.txt'
+
+    # grnn_path = root + 'GRNN_home.txt'
+    # baseline_path = root + 'GRNN_gru_pro_home-0516.txt'
+
+    # grnn_path = root + 'GRNN_tmall_buy.txt'
+    # baseline_path = root + 'GRNN_only_graph_tmall_buy-0516.txt'
 
     # grnn_path = root+'GRNN_phone.txt'
     # baseline_path = root+'GRU4Rec_phone.txt'
@@ -99,8 +117,8 @@ if __name__ == "__main__":
     # grnn_path = root + 'GRNN_home.txt'
     # baseline_path = root + 'GRU4Rec_home.txt'
 
-    grnn_path = root + 'GRNN_movielen-2.txt'
-    baseline_path = root + 'LESSR_fast_movielen.txt'
+    # grnn_path = root + 'GRNN_movielen-2.txt'
+    # baseline_path = root + 'LESSR_fast_movielen.txt'
 
     # grnn_path = root + 'GRNN_kindle.txt'
     # baseline_path = root + 'SASRec_kindle.txt'

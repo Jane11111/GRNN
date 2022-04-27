@@ -32,15 +32,15 @@ class prepare_data_base():
         self.data_too_short = 0
 
         # make origin data dir
-        self.dataset_path = '/home/zxl/project/MTAM-t2/data/training_testing_data/' + self.type + "_time_item_based_unidirection"
+        self.dataset_path = '/data/zxl/MTAM-t2/data/training_testing_data/' + self.type + "_time_item_based_unidirection"
 
         if not os.path.exists(self.dataset_path):
             os.mkdir(self.dataset_path)
 
         self.dataset_class_pkl = os.path.join(self.dataset_path, 'parameters.pkl')
-        self.dataset_class_train = os.path.join(self.dataset_path, 'train_data_new.pt')
-        self.dataset_class_test = os.path.join(self.dataset_path, 'test_data_new.pt')
-        self.dataset_class_dev = os.path.join(self.dataset_path, 'dev_data_new.pt')
+        self.dataset_class_train = os.path.join(self.dataset_path, 'train_data_new'+str(length_of_user_history)+'.pt')
+        self.dataset_class_test = os.path.join(self.dataset_path, 'test_data_new'+str(length_of_user_history)+'.pt')
+        self.dataset_class_dev = os.path.join(self.dataset_path, 'dev_data_new'+str(length_of_user_history)+'.pt')
 
 
         self.origin_data = origin_data
@@ -363,9 +363,15 @@ class prepare_data_base():
                   len(item_seq_temp) ,u_A_in )
 
             # 以小时为准
-            if test_user:
+            # if test_user:
+            #     self.test_set.append(lst)
+            # elif dev_user:
+            #     self.dev_set.append(lst)
+            # else:
+            #     self.train_set.append(lst)
+            if index == mask_index_list[-1]:
                 self.test_set.append(lst)
-            elif dev_user:
+            elif index == mask_index_list[-2]:
                 self.dev_set.append(lst)
             else:
                 self.train_set.append(lst)
